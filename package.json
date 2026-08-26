@@ -1,7 +1,7 @@
 {
   "name": "dsh-plugin-dialogue-context-bridge",
   "version": "0.1.0",
-  "description": "对话上下文桥接：把一次对话的「已了解信息」编译为可移植的三层快照，一键引入新对话。",
+  "description": "对话上下文桥接：为大语言模型(LLM)/AI 智能体的对话做跨会话上下文桥接的 DSH 插件，把一次对话的共识编译为可移植三层快照，一键引入新对话。",
   "keywords": [
     "dsh",
     "dsh-plugin",
