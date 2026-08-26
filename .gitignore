@@ -1,0 +1,24 @@
+node_modules/
+lib/
+coverage/
+*.tsbuildinfo
+
+# 本地运行时数据（快照数据库、密钥材料）绝不入库
+*.db
+*.db-shm
+*.db-wal
+.dsh/
+tmp/
+.tmp/
+
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+.env
+.env.*
+!.env.example
