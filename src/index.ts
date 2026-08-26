@@ -1,11 +1,11 @@
 import { join } from 'node:path';
-import type { Context as CordisContext } from 'cordis';
+import type { Context as CordisContext } from '@deepseek-ai/cordis';
 import { registerCommands } from './commands';
 import { assertEncryptionConfig, Config } from './config';
 import {
-  optionalConversationService,
-  optionalInjectionService,
-  requireCommandRegistry,
+  createDshCommandRegistry,
+  createDshConversationReader,
+  createDshContextInjector,
 } from './dsh/types';
 import { createCipher } from './security/crypto';
 import { createBridgeService, type BridgeService } from './service';
@@ -30,7 +30,7 @@ import { resolveDataDir } from './utils/paths';
  * @packageDocumentation
  */
 
-declare module 'cordis' {
+declare module '@deepseek-ai/cordis' {
   interface Context {
     /** 对话上下文桥接服务，供其他插件复用（如 Phase 2 的导入注入）。 */
     dcb: BridgeService;
@@ -40,8 +40,8 @@ declare module 'cordis' {
 /** 插件名（DSH 设置面板与日志中显示）。 */
 export const name = 'dialogue-context-bridge';
 
-/** 服务注入声明：对话服务为可选依赖，缺失时命令会给出可读提示。 */
-export const inject = { optional: ['conversation'] };
+/** 服务注入声明：依赖 dsh 的命令注册服务（人类命令）。 */
+export const inject = ['commands'];
 
 export { Config } from './config';
 
@@ -92,13 +92,15 @@ export function apply(ctx: CordisContext, config: Config): void {
       versioning,
     });
 
-    ctx.set('dcb', service);
+    // 把服务挂到 ctx.dcb：cordis 该 fork 要求先 provide 再 set，故直接用 provide
+    // （一次性完成声明与赋值，并在 fiber 卸载时自动撤回服务）。
+    ctx.provide('dcb', service);
 
     registerCommands({
-      registry: requireCommandRegistry(ctx),
+      registry: createDshCommandRegistry(ctx),
       service,
-      conversation: optionalConversationService(ctx),
-      injector: optionalInjectionService(ctx),
+      reader: createDshConversationReader(),
+      injector: createDshContextInjector(name),
       config,
       logger,
     });
@@ -113,10 +115,12 @@ export function apply(ctx: CordisContext, config: Config): void {
     throw error;
   }
 
-  ctx.on('dispose', () => {
-    handle.close();
-    logger.debug('已释放数据库连接');
-  });
+  // 该 fork 的 Cordis 不会 emit 'dispose' 事件，清理需注册为 fiber effect：
+  // 返回的 disposer 会在 fiber 卸载（含配置热更新的 dispose+重新 apply）时运行。
+  ctx.effect(() => () => {
+      handle.close();
+      logger.debug('已释放数据库连接');
+    });
 }
 
 export default { name, inject, Config, apply };

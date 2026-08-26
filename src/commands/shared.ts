@@ -1,4 +1,9 @@
-import type { CommandRegistry, ConversationService, InjectionService } from '../dsh/types';
+import type {
+  CommandRegistry,
+  ConversationReader,
+  ContextInjector,
+  SessionHandle,
+} from '../dsh/types';
 import type { BridgeService } from '../service';
 import type { Config } from '../config';
 import type { ConversationMessage } from '../types';
@@ -6,23 +11,19 @@ import type { Logger } from '../utils/logger';
 
 /** 命令注册所需的依赖。 */
 export interface CommandDeps {
-  /** 宿主命令注册函数。 */
-  registry: CommandRegistry;
+  /** 命令注册函数。 */
+  readonly registry: CommandRegistry;
   /** 桥接服务。 */
-  service: BridgeService;
-  /** 宿主对话服务；缺失时命令会返回可读提示而不是崩溃。 */
-  conversation?: ConversationService;
-  /** 宿主系统提示注入能力；缺失时降级为以消息形式下发背景简报。 */
-  injector?: InjectionService;
+  readonly service: BridgeService;
+  /** 会话历史读取器。 */
+  readonly reader: ConversationReader;
+  /** 上下文注入器。 */
+  readonly injector: ContextInjector;
   /** 插件配置。 */
-  config: Config;
+  readonly config: Config;
   /** 日志器。 */
-  logger: Logger;
+  readonly logger: Logger;
 }
-
-/** 宿主未提供对话服务时的统一提示。 */
-export const NO_CONVERSATION_SERVICE =
-  '当前宿主未提供对话读取能力（`ctx.conversation`），无法编译快照。请确认 DSH 版本或相关插件已启用。';
 
 /**
  * 把选项值安全地转成字符串。
@@ -70,21 +71,17 @@ export function parseTagOption(value: unknown): string[] {
 }
 
 /**
- * 读取当前对话的消息历史。
+ * 读取某个会话的消息历史。
  *
  * @param deps - 命令依赖。
- * @param conversationId - 对话 id。
+ * @param session - dsh 会话句柄（来自触发命令的 Agent）。
  * @returns 消息数组。
- * @throws 宿主未提供对话服务时抛出 {@link NO_CONVERSATION_SERVICE}。
  */
 export async function loadMessages(
   deps: CommandDeps,
-  conversationId: string,
+  session: SessionHandle,
 ): Promise<ConversationMessage[]> {
-  if (!deps.conversation) throw new Error(NO_CONVERSATION_SERVICE);
-  return deps.conversation.history(conversationId, {
-    limit: deps.config.maxHistoryMessages,
-  });
+  return deps.reader(session);
 }
 
 /**
@@ -98,11 +95,12 @@ export async function loadMessages(
 export function guard<A extends unknown[]>(
   logger: Logger,
   scope: string,
-  handler: (...args: A) => Promise<string> | string,
+  handler: (...args: A) => Promise<string | void> | string | void,
 ): (...args: A) => Promise<string> {
   return async (...args: A): Promise<string> => {
     try {
-      return await handler(...args);
+      const result = await handler(...args);
+      return typeof result === 'string' ? result : '';
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       logger.error(`${scope} 执行失败: ${message}`);

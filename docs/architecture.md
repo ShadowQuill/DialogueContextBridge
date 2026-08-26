@@ -55,7 +55,7 @@ DeepSeek 等智能体在复杂、长期项目（软件开发、学术研究、�
                                   │  SQLite + FTS5    │
                                   │  (本地 ~/.dsh)    │
                                   └────────┬─────────┘
-                                          │ /snapshot.search
+                                          │ /snapshot-search
                                           ▼
                                   ┌──────────────────┐
                                   │  关键词检索结果    │
@@ -64,7 +64,7 @@ DeepSeek 等智能体在复杂、长期项目（软件开发、学术研究、�
 
 - **编译（/compile）**：对当前会话全部消息做语义扫描与结构化提取，产出三层快照草稿，**仅驻留内存**，不写盘。设计上刻意与 `/save` 分离——快照一旦落库就可能被其他对话引入，必须用户确认内容后再持久化。
 - **保存（/save）**：把草稿写入本地数据库，并**同步 FTS5 索引**。配置 `autoSave: true` 可让 `/compile` 自动落库。
-- **检索（/snapshot.search）**：优先走 FTS5 `MATCH`（带 bm25 列权重：标题 > 描述 > 标签 > 摘要 > 偏好 > 原文）；当关键词因 trigram 长度限制无法构造 MATCH 时，自动回退到 `LIKE` 扫描，保证「搜两个汉字」不会直接返回空。
+- **检索（/snapshot-search）**：优先走 FTS5 `MATCH`（带 bm25 列权重：标题 > 描述 > 标签 > 摘要 > 偏好 > 原文）；当关键词因 trigram 长度限制无法构造 MATCH 时，自动回退到 `LIKE` 扫描，保证「搜两个汉字」不会直接返回空。
 
 ---
 
@@ -165,7 +165,7 @@ src/
   - `buildMergeBrief(base, overlay, policy?)` / `renderMergeBrief(...)` —— 把融合结果渲染为带「冲突裁决报告」（Markdown 表格：键 / 历史 / 当前 / 裁决结果 / 依据）的简报，头部用 `<!-- dcb:import mode=merge policy=... -->` 标注。
   - `buildBrief(snapshot, mode, current?, policy?)` —— 统一入口，按 `mode` 选择上述两种渲染，`current` 缺省时 `merge` 退化为 `inject`，结果含 `conflictCount`。
 - **命令 `/import`**：`/import <snapshotId> [--mode inject|merge] [--policy snapshotWins|newWins|timestamp] [--dry-run]`。默认「仅新信息」；`--dry-run` 仅预览简报不注入；`merge` 从当前对话 `history` 取消息现场编译后融合；`policy` 缺省时读取配置项 `merge.policy`（默认 `newWins`）。`service.buildImport()` 只做渲染与编排，注入副作用完全交给命令层，保持服务可单测。
-- **编辑权边界**：注入的简报为只读背景，新对话的任何产出都不会反向写入历史快照；用户仍可通过 `/snapshot.show` / `/snapshot.remove` 编辑、删除记忆内容，AI 不会自动学习。冲突裁决报告仅作提示，用户随时可用新指令人工覆盖。
+- **编辑权边界**：注入的简报为只读背景，新对话的任何产出都不会反向写入历史快照；用户仍可通过 `/snapshot-show` / `/snapshot-remove` 编辑、删除记忆内容，AI 不会自动学习。冲突裁决报告仅作提示，用户随时可用新指令人工覆盖。
 
 ### 7.2 Phase 4 落地情况：记忆库版本控制与一键入口
 
@@ -178,7 +178,7 @@ src/
   - `enabled=false` 时全部 no-op。
   - **设计取舍**：被版本化的是快照 Markdown **明文**（本插件自描述的可移植知识单元），而非 SQLite 二进制——明文才有意义的 diff/回滚，且 SQLite 加密时是运行时索引。因此若要求历史也不落明文，应关闭本功能；这是一处明确的安全权衡，由 `versioning.enabled` 决定。
 - **服务层接入 `src/service.ts`**：`compileAndSave` 在落库后**await** `versionSave`（保证版本与落库一致）；`saveDraft` 与 `remove` 为 best-effort（失败只告警，不阻断落库）。新增 `history(snapshotId)` 与 `rollback(snapshotId, ref)`——回滚从 git 取回旧版本 Markdown，重新 `parseSnapshot` + 落库，并把这次回滚自身也记一笔版本，历史可继续追溯。
-- **命令**：`/snapshot.history <id>`、`/snapshot.rollback <id> [--to <ref>]`（`--to` 省略时回滚到上一个版本）、`/dcb <id>`（一键 inject 导入别名）；设置面板经 Schemastery `Config` 热改集成，无需重启。
+- **命令**：`/snapshot-history <id>`、`/snapshot-rollback <id> [--to <ref>]`（`--to` 省略时回滚到上一个版本）、`/dcb <id>`（一键 inject 导入别名）；设置面板经 Schemastery `Config` 热改集成，无需重启。
 - **仓库隔离**：git 仓库独立放在数据目录下的 `snapshots/` 子目录，避免把 SQLite 二进制也纳入版本历史。
 
 > 本插件可基于现有 DSH 插件生态开发，复用 `dsh-plugin-memory` 等插件的底层能力，降低开发成本。

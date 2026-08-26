@@ -32,21 +32,24 @@
   </g>
 
   <!-- title -->
-  <text x="160" y="192" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="52" font-weight="800" fill="#f8fafc">DialogueContextBridge</text>
-  <text x="88" y="252" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="34" font-weight="700" fill="url(#accent)">对话上下文桥接</text>
-  <text x="88" y="306" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="25" font-weight="400" fill="#cbd5e1">把一次对话的「已了解信息」打包成可移植的知识单元，</text>
-  <text x="88" y="344" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="25" font-weight="400" fill="#cbd5e1">一键引入新对话，不再重复解释背景。</text>
+  <text x="160" y="188" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="52" font-weight="800" fill="#f8fafc">DialogueContextBridge</text>
+  <text x="88" y="248" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="34" font-weight="700" fill="url(#accent)">对话上下文桥接</text>
+  <text x="88" y="284" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="22" font-weight="600" fill="#7dd3fc">面向大语言模型（LLM）· AI 智能体对话</text>
+  <text x="88" y="324" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="24" font-weight="400" fill="#cbd5e1">把一次对话的「已了解信息」打包成可移植的知识单元，</text>
+  <text x="88" y="358" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="24" font-weight="400" fill="#cbd5e1">一键引入新对话，让 AI 不再重复了解背景。</text>
 
   <!-- tech tags -->
   <g font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="18" font-weight="600">
-    <rect x="88" y="382" width="118" height="34" rx="17" fill="#16263f" stroke="#2b3b58"/>
-    <text x="147" y="404" fill="#7dd3fc" text-anchor="middle">DSH 插件</text>
-    <rect x="218" y="382" width="118" height="34" rx="17" fill="#16263f" stroke="#2b3b58"/>
-    <text x="277" y="404" fill="#a5b4fc" text-anchor="middle">Cordis</text>
-    <rect x="348" y="382" width="132" height="34" rx="17" fill="#16263f" stroke="#2b3b58"/>
-    <text x="414" y="404" fill="#5eead4" text-anchor="middle">SQLite + FTS5</text>
-    <rect x="492" y="382" width="150" height="34" rx="17" fill="#16263f" stroke="#2b3b58"/>
-    <text x="567" y="404" fill="#f0abfc" text-anchor="middle">AES-256-GCM</text>
+    <rect x="88" y="396" width="104" height="34" rx="17" fill="#16263f" stroke="#2b3b58"/>
+    <text x="140" y="418" fill="#7dd3fc" text-anchor="middle">DSH 插件</text>
+    <rect x="200" y="396" width="92" height="34" rx="17" fill="#16263f" stroke="#2b3b58"/>
+    <text x="246" y="418" fill="#a5b4fc" text-anchor="middle">Cordis</text>
+    <rect x="300" y="396" width="124" height="34" rx="17" fill="#16263f" stroke="#2b3b58"/>
+    <text x="362" y="418" fill="#5eead4" text-anchor="middle">SQLite+FTS5</text>
+    <rect x="432" y="396" width="138" height="34" rx="17" fill="#16263f" stroke="#2b3b58"/>
+    <text x="501" y="418" fill="#f0abfc" text-anchor="middle">AES-256-GCM</text>
+    <rect x="578" y="396" width="116" height="34" rx="17" fill="#1b2c44" stroke="#2dd4bf"/>
+    <text x="636" y="418" fill="#2dd4bf" text-anchor="middle">LLM 对话</text>
   </g>
 
   <!-- right: three-layer bridge -->

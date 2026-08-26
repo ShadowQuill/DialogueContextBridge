@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { apply } from '../src/index';
 import type { Config } from '../src/config';
 import type { ConversationMessage } from '../src/types';
-import type { CommandBuilder, CommandRegistry, ConversationService } from '../src/dsh/types';
 
 /**
  * 插件加载集成测试。
@@ -13,14 +12,14 @@ import type { CommandBuilder, CommandRegistry, ConversationService } from '../sr
  * 之前的单测都在「核心逻辑 / 存储 / 加密」上，命令层与宿主无关的部分也覆盖到了，
  * 但 `apply` 本身——数据库打开、服务注册到 `ctx.dcb`、全部命令注册、dispose 释放
  * 连接——从未在真实调用下验证过。本测试用一个**最小 Cordis 上下文桩**直接驱动真实
- * 的 `apply`，并端到端跑通「编译落库 → 检索 → 导入简报（inject/merge）→ 删除」，
+ * 的 `apply`，并端到端跑通「编译落库 → 检索 → 读取 → 导入简报（inject/merge）→ 删除」，
  * 闭合「插件真的能被宿主加载」这一长期缺口。
  */
 
-/** 一条被记录的命令注册信息。 */
+/** 一条被记录的命令注册信息（对应真实 dsh 的 `CommandDefinition`）。 */
 interface RecordedCommand {
-  /** 命令声明（如 `compile`）。 */
-  declaration: string;
+  /** 命令名（如 `compile`、`snapshot.list`）。 */
+  name: string;
   /** 命令描述。 */
   description?: string;
 }
@@ -28,45 +27,40 @@ interface RecordedCommand {
 /** 最小 Cordis 上下文桩：只实现 `apply` 实际用到的成员。 */
 interface FakeContext {
   services: Record<string, unknown>;
-  disposeHandler?: () => void;
+  /** 由 `ctx.effect` 注册、在 fiber 卸载时运行的清理函数（模拟 unload）。 */
+  disposeEffect?: () => void | Promise<void>;
   recordedCommands: RecordedCommand[];
-  command: CommandRegistry;
-  conversation: ConversationService;
+  commands: { register(def: { name: string; description?: string }): () => void };
   set(name: string, value: unknown): void;
-  on(event: string, handler: () => void): void;
-}
-
-/** 构造一个链式命令构建器桩，仅记录声明、其余方法原样返回自身。 */
-function createBuilderStub(recorded: RecordedCommand[], declaration: string, description?: string): CommandBuilder {
-  recorded.push({ declaration, description });
-  const builder: CommandBuilder = {
-    option: () => builder,
-    alias: () => builder,
-    usage: () => builder,
-    example: () => builder,
-    action: () => builder,
-  };
-  return builder;
+  /** 真实 dsh 的 `ctx.provide`：声明并赋值一项服务（fiber 卸载时自动撤回）。 */
+  provide(name: string, value: unknown): () => void;
+  /** 真实 dsh 的 `ctx.effect`：立即执行 `execute` 并收集其返回的 disposer。 */
+  effect(execute: () => unknown): () => void;
 }
 
 /** 构造最小 Cordis 上下文桩。 */
-function createFakeContext(messages: readonly ConversationMessage[]): FakeContext {
+function createFakeContext(): FakeContext {
   const recordedCommands: RecordedCommand[] = [];
   const services: Record<string, unknown> = {};
   const ctx: FakeContext = {
     services,
     recordedCommands,
+    commands: {
+      register(def: { name: string; description?: string }): () => void {
+        recordedCommands.push({ name: def.name, description: def.description });
+        return () => undefined;
+      },
+    },
     set(name: string, value: unknown): void {
       services[name] = value;
     },
-    on(event: string, handler: () => void): void {
-      if (event === 'dispose') ctx.disposeHandler = handler;
+    provide(name: string, value: unknown): () => void {
+      services[name] = value;
+      return () => undefined;
     },
-    command(declaration: string, description?: string): CommandBuilder {
-      return createBuilderStub(recordedCommands, declaration, description);
-    },
-    conversation: {
-      history: async () => messages as ConversationMessage[],
+    effect(execute: () => unknown): () => void {
+      ctx.disposeEffect = execute() as () => void | Promise<void>;
+      return () => undefined;
     },
   };
   return ctx;
@@ -109,7 +103,7 @@ describe('plugin load integration', () => {
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'dcb-load-'));
-    ctx = createFakeContext(SAMPLE_MESSAGES);
+    ctx = createFakeContext();
     config = {
       dataDir: tmpDir,
       maxTokens: 4096,
@@ -140,18 +134,17 @@ describe('plugin load integration', () => {
     expect(typeof service?.read).toBe('function');
     expect(typeof service?.remove).toBe('function');
 
-    // 全部命令均完成注册。声明可能带参数后缀（如 `snapshot.search <keywords>`），
-    // 这里按命令名前缀归一化后再比对。
-    const names = ctx.recordedCommands.map((c) => c.declaration.split(/\s/)[0]);
+    // 全部命令均完成注册。
+    const names = ctx.recordedCommands.map((c) => c.name);
     for (const expected of [
       'compile',
       'save',
-      'snapshot.search',
-      'snapshot.list',
-      'snapshot.show',
-      'snapshot.remove',
-      'snapshot.history',
-      'snapshot.rollback',
+      'snapshot-search',
+      'snapshot-list',
+      'snapshot-show',
+      'snapshot-remove',
+      'snapshot-history',
+      'snapshot-rollback',
       'import',
       'dcb',
     ]) {
@@ -220,7 +213,7 @@ describe('plugin load integration', () => {
 
   it('dispose 句柄可安全释放数据库连接', () => {
     apply(ctx as unknown as Parameters<typeof apply>[0], config);
-    expect(ctx.disposeHandler).toBeDefined();
-    expect(() => ctx.disposeHandler?.()).not.toThrow();
+    expect(ctx.disposeEffect).toBeDefined();
+    expect(() => ctx.disposeEffect?.()).not.toThrow();
   });
 });

@@ -95,7 +95,7 @@ ctx.plugin(bridge, {
 /save
 
 # 3. 在任何时候按关键词找回它
-/snapshot.search 上下文桥接
+/snapshot-search 上下文桥接
 
 # 4. 在新对话里一键引入——默认「仅新信息」模式（只读背景，不回写）
 /import snap_a1b2c3
@@ -113,12 +113,12 @@ ctx.plugin(bridge, {
 | --- | --- | --- |
 | `/compile` | 编译当前对话为三层快照草稿并预览 | `--title` `--tags` `--max-tokens` `--full` `--discard` |
 | `/save` | 把草稿写入本地记忆库；无草稿时即时编译并保存 | `--title` `--tags` `--max-tokens` |
-| `/snapshot.search <keywords>` | FTS5 全文检索（多关键词为 AND 语义） | `-n, --limit` |
-| `/snapshot.list` | 列出快照 | `-n, --limit` `--here` |
-| `/snapshot.show <id>` | 查看快照完整文档与完整性校验结果 | `--meta` |
-| `/snapshot.remove <id>` | 删除快照及其索引（不可撤销） | — |
-| `/snapshot.history <id>` | 查看快照版本历史（Phase 4 版本控制） | — |
-| `/snapshot.rollback <id>` | 回滚快照到历史版本并重新落库 | `--to <ref>` |
+| `/snapshot-search <keywords>` | FTS5 全文检索（多关键词为 AND 语义） | `-n, --limit` |
+| `/snapshot-list` | 列出快照 | `-n, --limit` `--here` |
+| `/snapshot-show <id>` | 查看快照完整文档与完整性校验结果 | `--meta` |
+| `/snapshot-remove <id>` | 删除快照及其索引（不可撤销） | — |
+| `/snapshot-history <id>` | 查看快照版本历史（Phase 4 版本控制） | — |
+| `/snapshot-rollback <id>` | 回滚快照到历史版本并重新落库 | `--to <ref>` |
 | `/import <id>` | 把历史快照引入当前对话：默认「仅新信息」，亦可「合并」 | `--mode inject\|merge` `--policy snapshotWins\|newWins\|timestamp` `-d, --dry-run` |
 | `/dcb <id>` | 一键引入快照（等价 `/import <id>` 的 inject 模式） | — |
 
@@ -141,7 +141,7 @@ ctx.plugin(bridge, {
 | `encryption.indexPlaintext` | `false` | 加密时是否仍建明文索引（**默认关闭**，开启会通过索引泄漏内容） |
 | `logLevel` | `info` | 日志级别 |
 | `merge.policy` | `newWins` | 合并模式（`/import --mode merge`）的冲突裁决规则：`newWins` 当前对话覆盖历史快照、`snapshotWins` 历史快照优先、`timestamp` 按时间戳先后 |
-| `versioning.enabled` | `false` | 记忆库版本控制：每次保存/删除快照后自动 `git` 提交（数据目录下 `snapshots/` 子目录即仓库），并可用 `/snapshot.rollback` 回滚。**注意**：被版本化的是快照 Markdown 明文，git 历史不加密 |
+| `versioning.enabled` | `false` | 记忆库版本控制：每次保存/删除快照后自动 `git` 提交（数据目录下 `snapshots/` 子目录即仓库），并可用 `/snapshot-rollback` 回滚。**注意**：被版本化的是快照 Markdown 明文，git 历史不加密 |
 
 ### 关于加密擦除
 
@@ -156,7 +156,7 @@ DialogueContextBridge/
 │   ├── config.ts             # schemastery 配置 Schema
 │   ├── service.ts            # 编译→预览→落库→检索的编排层
 │   ├── types.ts              # 三层快照数据模型
-│   ├── commands/             # 命令层（/compile、/save、/snapshot.*）
+│   ├── commands/             # 命令层（/compile、/save、/snapshot-*）
 │   │   ├── compile.ts
 │   │   ├── save.ts
 │   │   ├── search.ts
@@ -219,7 +219,7 @@ docs(readme): 补充加密擦除说明
 - [x] **Phase 1** 快照导出：三层编译、Markdown + Schema 落盘、FTS5 检索
 - [x] **Phase 2** 快照导入：「仅了解新引入信息」模式（快照作为只读背景情报注入，`/import` + `InjectionService` 宿主接缝）
 - [x] **Phase 3** 合并模式：当前上下文与引入快照智能融合，偏好层按可配置规则裁决（`newWins` / `snapshotWins` / `timestamp`），冲突清单写入「裁决报告」供复核（`/import --mode merge [--policy ...]`，`merge.policy` 配置项）
-- [x] **Phase 4** 记忆库版本控制：每次保存/删除自动 `git` 提交（数据目录 `snapshots/` 即仓库），`/snapshot.history` + `/snapshot.rollback` 可回滚到历史版本；设置面板经 Schemastery 热改集成；`/dcb <id>` 提供一键导入快捷入口
+- [x] **Phase 4** 记忆库版本控制：每次保存/删除自动 `git` 提交（数据目录 `snapshots/` 即仓库），`/snapshot-history` + `/snapshot-rollback` 可回滚到历史版本；设置面板经 Schemastery 热改集成；`/dcb <id>` 提供一键导入快捷入口
 
 ## License
 

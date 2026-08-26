@@ -1,0 +1,15 @@
+# DialogueContextBridge 作为 DSH profile bundle 的 patch 层。
+#
+# 把「对话上下文桥接」插件挂为一条 cordis 插件行（id = dialogue-context-bridge），
+# 插入到 base 行之后、用户层 cordis.patch.yml 之前。dsh 的 Loader 会按 `name`
+# 解析本包并调用其 `apply(ctx, config)`，其中 `config` 由本段与插件 Schema 默认值合并。
+#
+# 所有字段均有 Schema 默认值；这里仅显式给出少数可覆盖项，其余交给默认配置。
+- insert:
+    - id: dialogue-context-bridge
+      name: 'dsh-plugin-dialogue-context-bridge'
+      config:
+        # 相对路径会解析到 `~/.dsh/dialogue-context-bridge`，数据只落本地磁盘。
+        dataDir: dialogue-context-bridge
+        maxTokens: 4096
+        logLevel: info
