@@ -6,6 +6,7 @@ import {
   parseTagOption,
   type CommandDeps,
 } from './shared';
+import { card, kvTable } from './card';
 
 /**
  * 注册 `/save` 命令：把草稿落库为持久化快照。
@@ -35,16 +36,18 @@ export function registerSaveCommand(deps: CommandDeps): void {
         }));
 
       const { total } = deps.service.stats();
-      return [
-        `✅ 已保存快照 \`${outcome.snapshotId}\``,
-        `- 标题：${outcome.title}`,
-        `- token 估算：${outcome.tokenEstimate}`,
-        `- 加密存储：${outcome.encrypted ? '是（AES-256-GCM）' : '否'}`,
-        `- 全文索引：${outcome.indexed ? '已建立' : '未建立（加密快照默认不索引明文）'}`,
-        `- 记忆库现有快照：${total} 条`,
-        '',
-        fromDraft ? '（来源：`/compile` 草稿）' : '（当前对话无草稿，已即时编译后保存。）',
-      ].join('\n');
+      return card({
+        icon: '💾',
+        title: `已保存快照 ${outcome.snapshotId}`,
+        subtitle: fromDraft ? '来源：`/compile` 草稿' : '当前对话无草稿，已即时编译后保存',
+        body: kvTable([
+          ['标题', outcome.title],
+          ['Token 估算', String(outcome.tokenEstimate)],
+          ['加密存储', outcome.encrypted ? '🟢 是（AES-256-GCM）' : '⚪ 否'],
+          ['全文索引', outcome.indexed ? '🟢 已建立' : '⚪ 未建立'],
+          ['记忆库总数', `${total} 条`],
+        ]),
+      });
     }),
   });
 }
@@ -78,19 +81,27 @@ export function registerQuickSaveCommand(deps: CommandDeps): void {
       const read = deps.service.read(outcome.snapshotId);
       const markdown = read?.markdown ?? '';
 
-      return [
-        `✅ 已导出快照 \`${outcome.snapshotId}\`（${outcome.tokenEstimate} tokens，` +
-          `加密=${outcome.encrypted}）`,
-        '',
-        '📋 以下为可复制的快照全文——粘贴到新对话再 `/dcb <id>` 即可一键引入：',
-        '',
-        '```markdown',
-        markdown,
-        '```',
-        '',
-        `引入：\`/dcb ${outcome.snapshotId}\`（仅新信息）或 ` +
-          `\`/import ${outcome.snapshotId} --mode merge\`（合并）`,
-      ].join('\n');
+      return card({
+        icon: '📦',
+        title: `已导出快照 ${outcome.snapshotId}`,
+        subtitle: `${outcome.tokenEstimate} tokens · 加密：${outcome.encrypted ? '是' : '否'}`,
+        body: [
+          kvTable([
+            ['标题', outcome.title],
+            ['Token 估算', String(outcome.tokenEstimate)],
+            ['加密存储', outcome.encrypted ? '🟢 是' : '⚪ 否'],
+            ['全文索引', outcome.indexed ? '🟢 已建立' : '⚪ 未建立'],
+          ]),
+          '',
+          `**📋 可复制快照全文** —— 粘贴到新对话后 \`/dcb ${outcome.snapshotId}\` 即可一键引入：`,
+          '',
+          '```markdown',
+          markdown,
+          '```',
+          '',
+          `引入：\`/dcb ${outcome.snapshotId}\`（仅新信息）· \`/import ${outcome.snapshotId} --mode merge\`（合并）`,
+        ].join('\n'),
+      });
     }),
   });
 }

@@ -44,16 +44,14 @@ export const Config = Schema.object({
   encryption: Schema.object({
     enabled: Schema.boolean()
       .default(false)
-      .description('启用 AES-256-GCM 静态加密。开启后快照正文以密文落库。'),
+      .description('启用 AES-256-GCM 静态加密，快照正文以密文落库。'),
     passphrase: Schema.string()
       .role('secret')
       .default('')
-      .description('加密口令（至少 8 位）。口令不落盘，丢失即等同于加密擦除，快照无法恢复。'),
+      .description('加密口令（≥8 位）。不落盘，丢失即不可恢复。'),
     indexPlaintext: Schema.boolean()
       .default(false)
-      .description(
-        '加密时是否仍写入明文全文索引。默认关闭：开启会让密文快照通过索引泄漏内容，仅在你完全理解风险时启用。',
-      ),
+      .description('加密时是否仍建明文全文索引。默认关：开启会经索引泄漏密文内容，慎开。'),
   })
     .default({ enabled: false, passphrase: '', indexPlaintext: false })
     .description('数据安全'),
@@ -66,8 +64,8 @@ export const Config = Schema.object({
     policy: Schema.union(['newWins', 'snapshotWins', 'timestamp'] as const)
       .default('newWins')
       .description(
-        '合并模式（/import --mode merge）下的冲突裁决规则。' +
-          'newWins=新信息覆盖旧信息；snapshotWins=快照优先；timestamp=按时间戳/显式权重裁决。',
+        '合并模式（/import --mode merge）冲突裁决：newWins=新信息覆盖旧；' +
+          'snapshotWins=快照优先；timestamp=按时间/权重裁决。',
       ),
   })
     .default({ policy: 'newWins' })
@@ -77,9 +75,8 @@ export const Config = Schema.object({
     enabled: Schema.boolean()
       .default(false)
       .description(
-        '记忆库版本控制：每次保存/删除快照后自动 git 提交（数据目录即仓库），' +
-          '并可经 /snapshot.rollback 回滚到历史版本。' +
-          '注意：被版本化的是快照 Markdown 明文，git 历史不会加密——如要求历史也不落明文请勿开启。',
+        '记忆库版本控制：每次保存/删除后自动 git 提交，可经 /snapshot.rollback 回滚。' +
+          '注意：被版本化的是快照明文，git 历史不加密——要求历史也不落明文请勿开启。',
       ),
   })
     .default({ enabled: false })

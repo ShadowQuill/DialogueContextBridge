@@ -1,6 +1,7 @@
 import type { ImportMode, MergePolicy } from '../core/inject';
 import { asString, asFlag, guard, loadMessages, type CommandDeps } from './shared';
 import type { ConversationMessage } from '../types';
+import { actionList, card, kvTable, snapshotTable } from './card';
 
 /**
  * 解析并校验导入模式参数。
@@ -131,13 +132,20 @@ export function registerImportCommand(deps: CommandDeps): void {
         mode === 'merge'
           ? `已按 Phase 3 融合（裁决规则 \`${policy}\`，自动裁决 ${outcome.conflictCount} 处冲突）后注入。`
           : '已作为只读背景情报注入，新对话的产出不会回写该快照。';
-      return [
-        `✅ 已引入快照 \`${outcome.snapshotId}\``,
-        `- 模式：${outcome.mode}`,
-        `- token 估算：${outcome.tokenEstimate}`,
-        '',
-        note,
-      ].join('\n');
+      const modeLabel =
+        outcome.mode === 'merge'
+          ? `\`merge\`（裁决 \`${policy}\`）`
+          : '`inject`（仅新信息）';
+      return card({
+        icon: '✅',
+        title: `已引入快照 ${outcome.snapshotId}`,
+        subtitle: note,
+        body: kvTable([
+          ['模式', modeLabel],
+          ['Token 估算', String(outcome.tokenEstimate)],
+          ['冲突裁决', outcome.mode === 'merge' ? `${outcome.conflictCount} 处` : '—'],
+        ]),
+      });
     }),
   });
 
@@ -154,26 +162,44 @@ export function registerImportCommand(deps: CommandDeps): void {
         const snapshots = deps.service.list(8);
         const { total } = deps.service.stats();
         if (snapshots.length === 0) {
-          return [
-            '📭 记忆库暂无快照。',
-            '',
-            '先用 `/compile` 编译当前对话，再 `/save` 落库；或 `/dcb-save` 一键导出。',
-          ].join('\n');
+          return card({
+            icon: '📭',
+            title: '记忆库暂无快照',
+            body: [
+              '先用 `/compile` 编译当前对话，再 `/save` 落库；或 `/dcb-save` 一键导出。',
+              '',
+              actionList([
+                ['一键导出当前对话', '/dcb-save'],
+                ['编译为草稿', '/compile'],
+              ]),
+            ].join('\n'),
+          });
         }
-        const lines = snapshots.map(
-          (s) =>
-            `- \`${s.snapshotId}\` ${s.title}（${s.tokenEstimate} tokens` +
-            `${s.encrypted ? ' · 加密' : ''}）`,
-        );
-        return [
-          `🗂️ 对话上下文桥接 · 近期快照（共 ${total} 条）`,
-          ...lines,
-          '',
-          '🔹 一键引入： `/dcb <id>`（仅新信息，只读背景）',
-          '🔹 合并引入： `/import <id> --mode merge`',
-          '🔹 一键导出： `/dcb-save`（编译并落库当前对话，返回可复制 Markdown）',
-          '🔹 检索：   `/snapshot-search <关键词>`',
-        ].join('\n');
+        const rows = snapshots.map((s) => ({
+          id: s.snapshotId,
+          title: s.title,
+          tokens: s.tokenEstimate,
+          status: s.encrypted ? '🔒 加密' : '明文',
+        }));
+        return card({
+          icon: '🌉',
+          title: '对话上下文桥接 · 记忆库总览',
+          subtitle: `共 ${total} 条快照 · 数据存于本地 ~/.dsh/，不上传服务器`,
+          body: [
+            '**近期快照**',
+            '',
+            snapshotTable(rows),
+            '',
+            '**快捷操作**',
+            '',
+            actionList([
+              ['一键引入（仅新信息，只读背景）', '/dcb <id>'],
+              ['合并引入（融合当前对话）', '/import <id> --mode merge'],
+              ['一键导出当前对话为可移植快照', '/dcb-save'],
+              ['关键词检索快照', '/snapshot-search <关键词>'],
+            ]),
+          ].join('\n'),
+        });
       }
 
       const outcome = await deps.service.buildImport({ snapshotId: targetId, mode: 'inject' });
@@ -181,12 +207,16 @@ export function registerImportCommand(deps: CommandDeps): void {
         return `未找到快照 \`${targetId}\`。先用 \`/snapshot.search\` 或 \`/snapshot.list\` 定位。`;
       }
       deps.injector(ctx.agent, outcome.brief);
-      return [
-        `✅ 已一键引入快照 \`${outcome.snapshotId}\``,
-        `- token 估算：${outcome.tokenEstimate}`,
-        '',
-        '已作为只读背景情报注入，新对话的产出不会回写该快照。',
-      ].join('\n');
+      return card({
+        icon: '✅',
+        title: `已一键引入快照 ${outcome.snapshotId}`,
+        subtitle: '已作为只读背景情报注入，新对话的产出不会回写该快照',
+        body: kvTable([
+          ['模式', 'inject（仅新信息）'],
+          ['Token 估算', String(outcome.tokenEstimate)],
+          ['快照 ID', `\`${outcome.snapshotId}\``],
+        ]),
+      });
     }),
   });
 }
