@@ -15,14 +15,14 @@ export interface CardOptions {
   /** 标题下方的副标题（状态行）。 */
   subtitle?: string;
   /** 卡片正文（Markdown）。 */
-  body: string;
+  body?: string;
 }
 
 /** 渲染一张卡片。 */
 export function card(opts: CardOptions): string {
   const head = [`> ${opts.icon ? `${opts.icon} ` : ''}**${opts.title}**`];
   if (opts.subtitle) head.push(`> ${opts.subtitle}`);
-  return [...head, '', opts.body].join('\n');
+  return [...head, '', opts.body ?? ''].join('\n');
 }
 
 /** 渲染两列键值表。 */

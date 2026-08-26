@@ -107,6 +107,15 @@ ctx.plugin(bridge, {
 /import snap_a1b2c3 --dry-run
 ```
 
+### 打开 Web UI
+
+```bash
+dsh --profile web          # 启动并自动打开默认浏览器到 Web UI
+# 后台运行且不自动开浏览器： dsh --profile web --no-open
+```
+
+插件加载后，在对话里输入 `/dcb` 会返回一张**「记忆库总览」卡片**（近期快照表 + 一键操作清单）；`/dcb <id>`、`/save`、`/dcb-save`、`/import` 的回执也统一为卡片样式（引用块标题带 + GFM 表格 + 状态徽标）。设置面板中可看到「对话上下文桥接」配置卡片，所有配置**热改即时生效**。
+
 ## 命令参考
 
 | 命令 | 说明 | 常用选项 |
@@ -221,6 +230,7 @@ docs(readme): 补充加密擦除说明
 - [x] **Phase 2** 快照导入：「仅了解新引入信息」模式（快照作为只读背景情报注入，`/import` + `InjectionService` 宿主接缝）
 - [x] **Phase 3** 合并模式：当前上下文与引入快照智能融合，偏好层按可配置规则裁决（`newWins` / `snapshotWins` / `timestamp`），冲突清单写入「裁决报告」供复核（`/import --mode merge [--policy ...]`，`merge.policy` 配置项）
 - [x] **Phase 4** UI 优化 / 一键操作 / 设置面板集成：经 `ctx.settings`（`installSettingsSection`）把 `Config` Schema 接入 DSH 设置面板，自动渲染配置表单并**热改无需重启**（日志级别、token 预算、合并策略、加密口令、版本控制开关均 live 生效；`dataDir` 变更需重启）；新增 `/dcb` 一键台（不带 id 显示近期快照与快捷操作）与 `/dcb-save` 一步导出可复制快照；记忆库版本控制此前已完成（`/snapshot-history` + `/snapshot-rollback` 回滚）
+- [x] **Phase 4.1** 卡片 UI 统一：新增 `src/commands/card.ts` 渲染助手（引用块标题带 + GFM 表格 + 状态徽标 + 快捷操作清单），`/dcb`、`/import`、`/save`、`/dcb-save` 回执统一为清爽卡片；设置表单字段描述收紧。注：DSH 0.1.x 的设置面板卡片由 harness 预编译进 web 包，外部插件无法注入自定义卡片，故卡片统一落在对话内呈现
 
 ## License
 
