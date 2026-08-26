@@ -25,25 +25,62 @@ function resolvePolicy(raw: string | undefined): MergePolicy {
 }
 
 /**
+ * 渲染「模式选择」引导（不带 `--mode` 时返回，替代 spec 里的交互式选择界面）。
+ *
+ * dsh 0.1.x 命令是 fire-and-respond，没有交互式 prompt 原语，因此用一次性
+ * 引导文案让用户显式选模式，并把可直接复制的命令示例列出来。
+ *
+ * @param id - 目标快照 id。
+ * @returns Markdown 引导文案。
+ */
+function buildModePicker(id: string): string {
+  return [
+    '🔀 请选择导入模式（`/import` 不会自动注入，需显式指定 `--mode`）：',
+    '',
+    '① **仅新信息** —— 快照作为只读背景情报注入，新对话的产出**不回写**快照：',
+    `\`\`\` /import ${id} --mode inject \`\`\``,
+    '　或一键别名：',
+    `\`\`\` /dcb ${id} \`\`\``,
+    '',
+    '② **合并** —— 把快照三层与当前对话上下文融合，含偏好冲突自动裁决：',
+    `\`\`\` /import ${id} --mode merge \`\`\``,
+    '　可选冲突裁决规则（默认 `newWins`）：',
+    '　- `--policy newWins` 当前对话胜（新信息覆盖旧信息）',
+    '　- `--policy snapshotWins` 历史快照胜',
+    '　- `--policy timestamp` 按时间先后 / 显式权重裁决',
+    '',
+    '💡 先用 `--dry-run` 预览融合结果，确认后再去掉该标志执行：',
+    `\`\`\` /import ${id} --mode merge --dry-run \`\`\``,
+  ].join('\n');
+}
+
+/**
  * 注册 `/import` 命令：把历史快照引入当前对话（Phase 2 导入注入 / Phase 3 合并）。
  *
  * 设计要点：
- * - 默认走「仅新信息」模式——快照被渲染为只读背景简报，通过 `agent.inject()`
- *   注入当前对话的下一轮请求；新对话的产出不会回写快照；
- * - `--mode merge` 走 Phase 3 融合：需读取当前对话历史（通过 `agent.session`），
- *   把快照三层与当前上下文融合；偏好冲突按 `--policy` 裁决；
+ * - **不带 `--mode`**：返回模式选择引导（见 {@link buildModePicker}），不注入——
+ *   由用户显式选定模式后再执行，对应 spec 的「弹出模式选择界面」；
+ * - `--mode inject`（或一键别名 `/dcb`）：「仅新信息」模式，快照渲染为只读背景
+ *   简报，通过 `agent.inject()` 注入下一轮请求，新对话产出不回写；
+ * - `--mode merge`：Phase 3 融合，需读取当前对话历史（通过 `agent.session`），
+ *   把快照三层与当前上下文融合，偏好冲突按 `--policy` 裁决；
  * - `--policy snapshotWins` 让历史快照优先；`--policy timestamp` 按时间/显式权重裁决；
- * - `--dry-run` 只预览简报，不实际注入，方便用户确认内容。
+ * - `--dry-run` 只预览简报，不实际注入，方便确认内容。
  *
  * @param deps - 命令依赖。
  */
 export function registerImportCommand(deps: CommandDeps): void {
   deps.registry({
     name: 'import',
-    description: '把历史快照作为背景情报引入当前对话',
+    description: '引入历史快照：不带 --mode 时列出可选模式；--mode inject 仅注入只读背景，--mode merge 融合当前对话',
     handler: guard(deps.logger, '/import', async (ctx) => {
       const targetId = asString(ctx.args[0]);
       if (!targetId) return '请提供要引入的快照 id，例如：`/import snap_a1b2c3`。';
+
+      // 未显式指定模式：返回模式选择引导，不自动注入（spec 的「弹出选择界面」等价物）。
+      if (ctx.options.mode === undefined) {
+        return buildModePicker(targetId);
+      }
 
       const mode = resolveMode(asString(ctx.options.mode));
       const policy = resolvePolicy(asString(ctx.options.policy));
@@ -56,7 +93,7 @@ export function registerImportCommand(deps: CommandDeps): void {
         } catch {
           return [
             '⚠️ `--mode merge` 需要读取当前对话历史，但宿主未提供会话读取能力。',
-            '请改用默认 `inject` 模式。',
+            '请改用 `inject` 模式。',
           ].join('\n');
         }
       }

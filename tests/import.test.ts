@@ -11,6 +11,8 @@ import { openMemoryDatabase, type DatabaseHandle } from '../src/storage/database
 import { createSnapshotRepository } from '../src/storage/repository';
 import { createBridgeService } from '../src/service';
 import { silentLogger } from '../src/utils/logger';
+import { registerImportCommand } from '../src/commands/import';
+import type { CommandDeps } from '../src/commands/shared';
 import type { ContextSnapshot, PreferenceEntry, SummarySection, VerbatimEntry } from '../src/types';
 import { BASE_TIME, sampleConversation } from './fixtures';
 
@@ -241,5 +243,84 @@ describe('BridgeService.buildImport（导入编排）', () => {
   it('快照不存在时返回 undefined', async () => {
     const { service } = await seededService();
     expect(await service.buildImport({ snapshotId: 'nope' })).toBeUndefined();
+  });
+});
+
+describe('/import 命令层（模式选择引导）', () => {
+  /** 最小命令依赖桩，记录 inject 调用与 buildImport 入参。 */
+  function fakeDeps() {
+    const injectCalls: string[] = [];
+    let lastRequest: Parameters<NonNullable<CommandDeps['service']['buildImport']>>[0] | undefined;
+    const handlers = new Map<string, (ctx: unknown) => unknown>();
+    const deps = {
+      registry: (def: { name: string; handler: (ctx: unknown) => unknown }) => {
+        handlers.set(def.name, def.handler);
+      },
+      service: {
+        buildImport: async (request: Parameters<NonNullable<CommandDeps['service']['buildImport']>>[0]) => {
+          lastRequest = request;
+          return {
+            snapshotId: request.snapshotId,
+            mode: request.mode ?? 'inject',
+            brief: '# 背景简报',
+            tokenEstimate: 10,
+            conflictCount: 0,
+          };
+        },
+      },
+      reader: async () => [],
+      injector: (_agent: unknown, brief: string) => {
+        injectCalls.push(brief);
+      },
+      config: { maxTokens: 4096 } as CommandDeps['config'],
+      logger: silentLogger,
+    } as unknown as CommandDeps;
+    return { deps, handlers, injectCalls, getLastRequest: () => lastRequest };
+  }
+
+  it('不带 --mode 时返回模式选择引导且不注入', async () => {
+    const { deps, handlers, injectCalls } = fakeDeps();
+    registerImportCommand(deps);
+    const reply = (await handlers.get('import')!({
+      agent: { session: { deriveMessages: () => [] } },
+      conversationId: 'c1',
+      rawInput: 'snap_x',
+      args: ['snap_x'],
+      options: {},
+    })) as string;
+    expect(reply).toContain('请选择导入模式');
+    expect(reply).toContain('/import snap_x --mode inject');
+    expect(reply).toContain('/dcb snap_x');
+    expect(reply).toContain('--mode merge');
+    expect(injectCalls).toHaveLength(0);
+  });
+
+  it('带 --mode inject 时真正注入且不回写', async () => {
+    const { deps, handlers, injectCalls, getLastRequest } = fakeDeps();
+    registerImportCommand(deps);
+    const reply = (await handlers.get('import')!({
+      agent: { session: { deriveMessages: () => [] } },
+      conversationId: 'c1',
+      rawInput: 'snap_x --mode inject',
+      args: ['snap_x'],
+      options: { mode: 'inject' },
+    })) as string;
+    expect(reply).toContain('已引入快照');
+    expect(injectCalls).toHaveLength(1);
+    expect(getLastRequest()?.mode).toBe('inject');
+  });
+
+  it('/dcb 别名等价 inject 且直接注入', async () => {
+    const { deps, handlers, injectCalls } = fakeDeps();
+    registerImportCommand(deps);
+    const reply = (await handlers.get('dcb')!({
+      agent: { session: { deriveMessages: () => [] } },
+      conversationId: 'c1',
+      rawInput: 'snap_x',
+      args: ['snap_x'],
+      options: {},
+    })) as string;
+    expect(reply).toContain('已一键引入快照');
+    expect(injectCalls).toHaveLength(1);
   });
 });
