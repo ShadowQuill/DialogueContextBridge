@@ -1,5 +1,6 @@
 import { join } from 'node:path';
 import type { Context as CordisContext } from '@deepseek-ai/cordis';
+import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings';
 import { registerCommands } from './commands';
 import { assertEncryptionConfig, Config } from './config';
 import {
@@ -7,14 +8,42 @@ import {
   createDshConversationReader,
   createDshContextInjector,
 } from './dsh/types';
-import { createCipher } from './security/crypto';
+import { createCipher, type Cipher } from './security/crypto';
 import { createBridgeService, type BridgeService } from './service';
 import { openDatabase } from './storage/database';
 import { createSnapshotRepository } from './storage/repository';
 import { createCliGitRunner } from './versioning/git';
-import { createVersioningController } from './versioning/store';
+import { createVersioningController, type VersioningController } from './versioning/store';
 import { createLogger } from './utils/logger';
 import { resolveDataDir } from './utils/paths';
+
+/** 在 DSH 设置面板中占用的命名空间（lowercase kebab-case，与插件短名一致）。 */
+const SETTINGS_NAMESPACE = settingsNamespace('dialogue-context-bridge');
+
+/**
+ * 把版本控制控制器包成「开关热更新」代理。
+ *
+ * `createVersioningController` 在构造时就把 `enabled` 固化进返回的控制器；但设置
+ * 面板允许用户在运行时切换 `versioning.enabled`。这里用一层代理把"是否启用"改为
+ * 读 live 配置：关闭时所有方法退化为 no-op，开启时委托给内部真实控制器（其真实
+ * 方法在首次 `git` 操作时才惰性初始化仓库，构造期无副作用）。
+ *
+ * @param inner - 始终以 `enabled: true` 构造的内部控制器，持有真实实现。
+ * @param isEnabled - 读取 live 配置的开关。
+ * @returns 开关随配置变化的代理控制器。
+ */
+function makeLiveVersioning(inner: VersioningController, isEnabled: () => boolean): VersioningController {
+  const noop = (): Promise<void> => Promise.resolve();
+  return {
+    get enabled() {
+      return isEnabled();
+    },
+    recordSave: (id, markdown) => (isEnabled() ? inner.recordSave(id, markdown) : noop()),
+    recordRemove: (id) => (isEnabled() ? inner.recordRemove(id) : noop()),
+    history: (id) => (isEnabled() ? inner.history(id) : Promise.resolve([])),
+    readAtRef: (id, ref) => (isEnabled() ? inner.readAtRef(id, ref) : Promise.resolve(undefined)),
+  };
+}
 
 /**
  * DialogueContextBridge —— DSH 对话上下文桥接插件。
@@ -65,30 +94,49 @@ export function apply(ctx: CordisContext, config: Config): void {
   const logger = createLogger(name, config.logLevel);
   const handle = openDatabase({ dataDir: config.dataDir, logger });
 
+  // —— 设置面板热更新所需的 live 状态 ——
+  // 命令层与服务层读取的是下面这些「可变引用」，设置面板改动时由 setSource 就地更新，
+  // 无需重启宿主（数据目录变更除外，见 applyLive 内的告警）。
+  const liveConfig: Config = { ...config };
+  const liveOptions = {
+    maxTokens: config.maxTokens,
+    maxBulletsPerSection: config.maxBulletsPerSection,
+    indexPlaintextWhenEncrypted: config.encryption.indexPlaintext,
+    mergePolicy: config.merge.policy,
+  };
+  let cipherRef = createCipher(
+    config.encryption.enabled ? config.encryption.passphrase : undefined,
+  );
+  // 加解密器无法就地改密钥，用一层代理把方法委托给当前 cipherRef，使设置热更新生效。
+  const cipher: Cipher = {
+    get enabled() {
+      return cipherRef.enabled;
+    },
+    seal: (text) => cipherRef.seal(text),
+    open: (text) => cipherRef.open(text),
+  };
+
   try {
     const repository = createSnapshotRepository(handle);
-    const cipher = createCipher(
-      config.encryption.enabled ? config.encryption.passphrase : undefined,
-    );
 
     // Phase 4：记忆库版本控制。git 仓库独立放在数据目录下的 `snapshots/`，
-    // 避免把 SQLite 二进制也纳入版本历史。
-    const versioning = createVersioningController({
-      dataDir: join(resolveDataDir(config.dataDir), 'snapshots'),
-      git: createCliGitRunner({ cwd: join(resolveDataDir(config.dataDir), 'snapshots') }),
-      enabled: config.versioning.enabled,
-    });
+    // 避免把 SQLite 二进制也纳入版本历史。内部控制器始终以 enabled:true 构造（持有
+    // 真实实现、惰性初始化仓库），再包成随 live 配置开关的代理，从而支持运行时切换。
+    const snapshotsDir = join(resolveDataDir(config.dataDir), 'snapshots');
+    const versioning = makeLiveVersioning(
+      createVersioningController({
+        dataDir: snapshotsDir,
+        git: createCliGitRunner({ cwd: snapshotsDir }),
+        enabled: true,
+      }),
+      () => liveConfig.versioning.enabled,
+    );
 
     const service = createBridgeService({
       repository,
       cipher,
       logger,
-      options: {
-        maxTokens: config.maxTokens,
-        maxBulletsPerSection: config.maxBulletsPerSection,
-        indexPlaintextWhenEncrypted: config.encryption.indexPlaintext,
-        mergePolicy: config.merge.policy,
-      },
+      options: liveOptions,
       versioning,
     });
 
@@ -101,8 +149,17 @@ export function apply(ctx: CordisContext, config: Config): void {
       service,
       reader: createDshConversationReader(),
       injector: createDshContextInjector(name),
-      config,
+      config: liveConfig,
       logger,
+    });
+
+    // Phase 4：接入 DSH 设置面板。注册后宿主 web UI 的「插件设置」会自动渲染本插件
+    // 的配置表单（由 Config Schema 描述），改动经 setSource 热更新到上面的 live 引用。
+    installSettingsSection(ctx, SETTINGS_NAMESPACE, Config, config, {
+      validate: assertEncryptionConfig,
+      setSource: (current) => applyLive(current()),
+      // 所有热更新逻辑都在 setSource 内完成，无需额外通知动作。
+      onChange: () => {},
     });
 
     logger.info(
@@ -113,6 +170,27 @@ export function apply(ctx: CordisContext, config: Config): void {
   } catch (error) {
     handle.close();
     throw error;
+  }
+
+  /**
+   * 把设置面板的解析结果热更新到 live 引用。
+   *
+   * @param next - 经 Schema 默认值 + 组合层 + 用户层解析后的完整配置。
+   */
+  function applyLive(next: Config): void {
+    Object.assign(liveConfig, next);
+    liveOptions.maxTokens = next.maxTokens;
+    liveOptions.maxBulletsPerSection = next.maxBulletsPerSection;
+    liveOptions.indexPlaintextWhenEncrypted = next.encryption.indexPlaintext;
+    liveOptions.mergePolicy = next.merge.policy;
+    cipherRef = createCipher(next.encryption.enabled ? next.encryption.passphrase : undefined);
+    logger.setLevel(next.logLevel);
+    if (next.dataDir !== config.dataDir) {
+      logger.warn(
+        'dataDir 已变更，但数据库在加载期已打开，需重启 dsh web 方能切换到新数据目录；' +
+          '当前仍使用原数据目录。',
+      );
+    }
   }
 
   // 该 fork 的 Cordis 不会 emit 'dispose' 事件，清理需注册为 fiber effect：

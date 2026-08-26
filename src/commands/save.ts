@@ -48,3 +48,49 @@ export function registerSaveCommand(deps: CommandDeps): void {
     }),
   });
 }
+
+/**
+ * 注册 `/dcb-save` 命令：一键导出当前对话为可移植快照。
+ *
+ * 等价于「`/compile` + `/save`」的一步到位，并额外回显落库的 Markdown 全文与快照
+ * id，方便用户**直接复制**后粘贴到其他对话或外部 Agent（纯文本即可被任何能读文本的
+ * AI 接手，满足 spec 的「可迁移性」）。加密快照回显的是解密后的明文。
+ *
+ * @param deps - 命令依赖。
+ */
+export function registerQuickSaveCommand(deps: CommandDeps): void {
+  deps.registry({
+    name: 'dcb-save',
+    description: '一键把当前对话编译并落库为快照，回显可复制的 Markdown 与快照 id',
+    handler: guard(deps.logger, '/dcb-save', async (ctx) => {
+      const { conversationId } = ctx;
+
+      const outcome = await deps.service.compileAndSave({
+        conversationId,
+        messages: await loadMessages(deps, ctx.agent.session),
+        title: asString(ctx.options.title),
+        description: asString(ctx.options.description),
+        tags: parseTagOption(ctx.options.tags),
+        maxTokens: asPositiveInt(ctx.options.maxTokens),
+      });
+
+      // 读回明文 Markdown，供用户一键复制（可移植到任意对话 / 外部 Agent）。
+      const read = deps.service.read(outcome.snapshotId);
+      const markdown = read?.markdown ?? '';
+
+      return [
+        `✅ 已导出快照 \`${outcome.snapshotId}\`（${outcome.tokenEstimate} tokens，` +
+          `加密=${outcome.encrypted}）`,
+        '',
+        '📋 以下为可复制的快照全文——粘贴到新对话再 `/dcb <id>` 即可一键引入：',
+        '',
+        '```markdown',
+        markdown,
+        '```',
+        '',
+        `引入：\`/dcb ${outcome.snapshotId}\`（仅新信息）或 ` +
+          `\`/import ${outcome.snapshotId} --mode merge\`（合并）`,
+      ].join('\n');
+    }),
+  });
+}

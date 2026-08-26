@@ -1,4 +1,4 @@
-import Schema from 'schemastery';
+import Schema from '@deepseek-ai/schemastery';
 
 /**
  * 插件配置 Schema。

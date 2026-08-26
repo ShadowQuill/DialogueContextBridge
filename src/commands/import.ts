@@ -141,13 +141,40 @@ export function registerImportCommand(deps: CommandDeps): void {
     }),
   });
 
-  // 一键导入别名：省掉 `/import` 的子命令记忆成本，直接 `/dcb <id>` 即「仅新信息」注入。
+  // 一键台：不带 id 时显示近期快照与快捷操作（Phase 4 UI 优化）；带 id 时等价
+  // `/import inject`，省掉子命令记忆成本，直接 `/dcb <id>` 即「仅新信息」注入。
   deps.registry({
     name: 'dcb',
-    description: '一键引入历史快照（等价 /import inject，只读背景情报）',
+    description: '对话上下文桥接一键台：/dcb <id> 一键引入；不带 id 显示近期快照与快捷操作',
     handler: guard(deps.logger, '/dcb', async (ctx) => {
       const targetId = asString(ctx.args[0]);
-      if (!targetId) return '请提供要引入的快照 id，例如：`dcb snap_a1b2c3`。';
+
+      // 不带 id：仪表盘视图，提升命令面板的可见性与可发现性。
+      if (!targetId) {
+        const snapshots = deps.service.list(8);
+        const { total } = deps.service.stats();
+        if (snapshots.length === 0) {
+          return [
+            '📭 记忆库暂无快照。',
+            '',
+            '先用 `/compile` 编译当前对话，再 `/save` 落库；或 `/dcb-save` 一键导出。',
+          ].join('\n');
+        }
+        const lines = snapshots.map(
+          (s) =>
+            `- \`${s.snapshotId}\` ${s.title}（${s.tokenEstimate} tokens` +
+            `${s.encrypted ? ' · 加密' : ''}）`,
+        );
+        return [
+          `🗂️ 对话上下文桥接 · 近期快照（共 ${total} 条）`,
+          ...lines,
+          '',
+          '🔹 一键引入： `/dcb <id>`（仅新信息，只读背景）',
+          '🔹 合并引入： `/import <id> --mode merge`',
+          '🔹 一键导出： `/dcb-save`（编译并落库当前对话，返回可复制 Markdown）',
+          '🔹 检索：   `/snapshot-search <关键词>`',
+        ].join('\n');
+      }
 
       const outcome = await deps.service.buildImport({ snapshotId: targetId, mode: 'inject' });
       if (!outcome) {

@@ -44,6 +44,8 @@ interface DshMockHost {
   provide(name: string, value: unknown): () => void;
   /** 真实 dsh 的 `ctx.effect`：立即执行 `execute` 并收集其返回的 disposer。 */
   effect(execute: () => unknown): () => void;
+  /** 真实 dsh 的 `ctx.inject`：声明依赖，依赖就绪时回调（测试桩不挂载 settings，故不触发）。 */
+  inject(_deps: string[], _cb?: (sctx: unknown) => void): () => void;
 }
 
 /** 构造 DSH 形态的 mock 宿主。 */
@@ -87,6 +89,9 @@ function createDshMockHost(messages: readonly ConversationMessage[]): {
     },
     effect(execute: () => unknown): () => void {
       host.disposeEffect = execute() as () => void | Promise<void>;
+      return () => undefined;
+    },
+    inject(_deps: string[], _cb?: (sctx: unknown) => void): () => void {
       return () => undefined;
     },
   };
@@ -196,7 +201,7 @@ describe('DSH host contract', () => {
   it('宿主提供了 commands 接缝，注册了全部命令', async () => {
     const { host, tmpDir } = await mount(true);
     cleanup.push(tmpDir);
-    expect(host.capturedCommands.length).toBe(10);
+    expect(host.capturedCommands.length).toBe(11);
     expect(host.commands).toBeDefined();
     expect(host.capturedCommands.map((c) => c.name)).toContain('compile');
     expect(host.capturedCommands.map((c) => c.name)).toContain('import');

@@ -267,6 +267,9 @@ describe('/import 命令层（模式选择引导）', () => {
             conflictCount: 0,
           };
         },
+        list: () => [],
+        stats: () => ({ total: 0 }),
+        read: () => undefined,
       },
       reader: async () => [],
       injector: (_agent: unknown, brief: string) => {
@@ -322,5 +325,27 @@ describe('/import 命令层（模式选择引导）', () => {
     })) as string;
     expect(reply).toContain('已一键引入快照');
     expect(injectCalls).toHaveLength(1);
+  });
+
+  it('/dcb 不带 id 时显示近期快照仪表盘与快捷操作', async () => {
+    const { deps, handlers } = fakeDeps();
+    const mock = deps.service as unknown as {
+      list: () => Array<{ snapshotId: string; title: string; tokenEstimate: number; encrypted: boolean }>;
+      stats: () => { total: number };
+    };
+    mock.list = () => [{ snapshotId: 'snap_a1', title: '桥接设计', tokenEstimate: 42, encrypted: false }];
+    mock.stats = () => ({ total: 1 });
+    registerImportCommand(deps);
+    const reply = (await handlers.get('dcb')!({
+      agent: { session: { deriveMessages: () => [] } },
+      conversationId: 'c1',
+      rawInput: '',
+      args: [],
+      options: {},
+    })) as string;
+    expect(reply).toContain('近期快照');
+    expect(reply).toContain('snap_a1');
+    expect(reply).toContain('/dcb-save');
+    expect(reply).toContain('一键导出');
   });
 });

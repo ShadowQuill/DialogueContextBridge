@@ -15,6 +15,8 @@ export interface Logger {
   info(message: string, ...args: unknown[]): void;
   warn(message: string, ...args: unknown[]): void;
   error(message: string, ...args: unknown[]): void;
+  /** 运行时调整最低输出级别（供设置面板热更新使用）。 */
+  setLevel(level: LogLevel): void;
 }
 
 /**
@@ -29,7 +31,7 @@ export interface Logger {
  * @returns 日志器实例。
  */
 export function createLogger(scope: string, level: LogLevel = 'info'): Logger {
-  const threshold = LEVEL_WEIGHT[level];
+  let threshold = LEVEL_WEIGHT[level];
   const prefix = `[${scope}]`;
 
   const emit =
@@ -45,6 +47,11 @@ export function createLogger(scope: string, level: LogLevel = 'info'): Logger {
     info: emit('info', console.error),
     warn: emit('warn', console.warn),
     error: emit('error', console.error),
+    setLevel(next: LogLevel): void {
+      const nextThreshold = LEVEL_WEIGHT[next];
+      if (nextThreshold === undefined) return;
+      threshold = nextThreshold;
+    },
   };
   /* eslint-enable no-console */
 }
@@ -55,4 +62,5 @@ export const silentLogger: Logger = {
   info: () => {},
   warn: () => {},
   error: () => {},
+  setLevel: () => {},
 };

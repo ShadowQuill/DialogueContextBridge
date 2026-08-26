@@ -120,13 +120,14 @@ ctx.plugin(bridge, {
 | `/snapshot-history <id>` | 查看快照版本历史（Phase 4 版本控制） | — |
 | `/snapshot-rollback <id>` | 回滚快照到历史版本并重新落库 | `--to <ref>` |
 | `/import <id>` | 把历史快照引入当前对话：默认「仅新信息」，亦可「合并」 | `--mode inject\|merge` `--policy snapshotWins\|newWins\|timestamp` `-d, --dry-run` |
-| `/dcb <id>` | 一键引入快照（等价 `/import <id>` 的 inject 模式） | — |
+| `/dcb <id>` | 一键台：带 `<id>` 等价 inject 一键引入；不带 `<id>` 显示近期快照与快捷操作 | — |
+| `/dcb-save` | 一键导出当前对话为快照：编译并落库，回显可复制的 Markdown 与 id（Phase 4 一键操作） | `--title` `--tags` `--max-tokens` |
 
 `/compile` 与 `/save` 是有意分开的两步：快照一旦落库就可能被其他对话引入，必须由你确认内容后再持久化。若你更喜欢一步到位，把配置项 `autoSave` 打开即可。
 
 ## 配置项
 
-在 DSH 设置面板中可热改，无需重启。
+在 DSH 设置面板中可热改，**无需重启**（配置经 `installSettingsSection` 接入，改动即通过 `setSource` 热更新到日志级别、token 预算、合并策略、加密口令与版本控制开关）。唯一例外：`dataDir` 在加载期已打开数据库，改后需重启 `dsh web` 方能切换数据目录。
 
 | 配置项 | 默认值 | 说明 |
 | --- | --- | --- |
@@ -219,7 +220,7 @@ docs(readme): 补充加密擦除说明
 - [x] **Phase 1** 快照导出：三层编译、Markdown + Schema 落盘、FTS5 检索
 - [x] **Phase 2** 快照导入：「仅了解新引入信息」模式（快照作为只读背景情报注入，`/import` + `InjectionService` 宿主接缝）
 - [x] **Phase 3** 合并模式：当前上下文与引入快照智能融合，偏好层按可配置规则裁决（`newWins` / `snapshotWins` / `timestamp`），冲突清单写入「裁决报告」供复核（`/import --mode merge [--policy ...]`，`merge.policy` 配置项）
-- [x] **Phase 4** 记忆库版本控制：每次保存/删除自动 `git` 提交（数据目录 `snapshots/` 即仓库），`/snapshot-history` + `/snapshot-rollback` 可回滚到历史版本；设置面板经 Schemastery 热改集成；`/dcb <id>` 提供一键导入快捷入口
+- [x] **Phase 4** UI 优化 / 一键操作 / 设置面板集成：经 `ctx.settings`（`installSettingsSection`）把 `Config` Schema 接入 DSH 设置面板，自动渲染配置表单并**热改无需重启**（日志级别、token 预算、合并策略、加密口令、版本控制开关均 live 生效；`dataDir` 变更需重启）；新增 `/dcb` 一键台（不带 id 显示近期快照与快捷操作）与 `/dcb-save` 一步导出可复制快照；记忆库版本控制此前已完成（`/snapshot-history` + `/snapshot-rollback` 回滚）
 
 ## License
 

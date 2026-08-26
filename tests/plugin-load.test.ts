@@ -36,6 +36,8 @@ interface FakeContext {
   provide(name: string, value: unknown): () => void;
   /** 真实 dsh 的 `ctx.effect`：立即执行 `execute` 并收集其返回的 disposer。 */
   effect(execute: () => unknown): () => void;
+  /** 真实 dsh 的 `ctx.inject`：声明依赖，依赖就绪时回调（测试桩不挂载 settings，故不触发）。 */
+  inject(_deps: string[], _cb?: (sctx: unknown) => void): () => void;
 }
 
 /** 构造最小 Cordis 上下文桩。 */
@@ -60,6 +62,9 @@ function createFakeContext(): FakeContext {
     },
     effect(execute: () => unknown): () => void {
       ctx.disposeEffect = execute() as () => void | Promise<void>;
+      return () => undefined;
+    },
+    inject(_deps: string[], _cb?: (sctx: unknown) => void): () => void {
       return () => undefined;
     },
   };
@@ -139,6 +144,7 @@ describe('plugin load integration', () => {
     for (const expected of [
       'compile',
       'save',
+      'dcb-save',
       'snapshot-search',
       'snapshot-list',
       'snapshot-show',
@@ -150,7 +156,7 @@ describe('plugin load integration', () => {
     ]) {
       expect(names).toContain(expected);
     }
-    expect(names.length).toBe(10);
+    expect(names.length).toBe(11);
   });
 
   it('端到端跑通 编译落库 → 检索 → 读取 → 导入(inject/merge) → 删除', async () => {
