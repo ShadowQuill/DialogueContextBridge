@@ -3,6 +3,10 @@ lib/
 coverage/
 *.tsbuildinfo
 
+# 构建/测试临时产物
+*.bundled_*.mjs
+vitest.config.ts.timestamp-*.mjs
+
 # 本地运行时数据（快照数据库、密钥材料）绝不入库
 *.db
 *.db-shm
