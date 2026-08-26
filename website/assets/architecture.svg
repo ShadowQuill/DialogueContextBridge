@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 640" font-family="-apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#64748b"/>
+    </marker>
+    <marker id="arrowP" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#8b5cf6"/>
+    </marker>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- background -->
+  <rect x="0" y="0" width="920" height="640" fill="#ffffff"/>
+  <text x="460" y="34" text-anchor="middle" font-size="20" font-weight="700" fill="#1e293b">DialogueContextBridge · 三层快照数据流</text>
+  <text x="460" y="56" text-anchor="middle" font-size="12" fill="#94a3b8">编译保存（左）与 导入注入（右）两条主线，外加安全与版本控制支撑</text>
+
+  <!-- LEFT: Source pipeline -->
+  <text x="190" y="92" text-anchor="middle" font-size="13" font-weight="600" fill="#6366f1">源对话 · Source Session</text>
+  <rect x="70" y="100" width="240" height="42" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="190" y="126" text-anchor="middle" font-size="13" fill="#3730a3">对话消息流（Conversation）</text>
+
+  <line x1="190" y1="142" x2="190" y2="166" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="70" y="168" width="240" height="38" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="190" y="192" text-anchor="middle" font-size="13" font-weight="600" fill="#4338ca">/compile　编译为三层草稿</text>
+
+  <!-- three-layer container -->
+  <rect x="70" y="216" width="240" height="172" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="86" y="238" font-size="12" font-weight="700" fill="#475569">三层快照 Snapshot</text>
+  <rect x="86" y="248" width="208" height="38" rx="8" fill="#fef2f2" stroke="#ef4444" stroke-width="1.2"/>
+  <circle cx="102" cy="267" r="5" fill="#ef4444"/>
+  <text x="116" y="272" font-size="12" fill="#7f1d1d">① 原文层 verbatim（逐字）</text>
+  <rect x="86" y="292" width="208" height="38" rx="8" fill="#ecfeff" stroke="#06b6d4" stroke-width="1.2"/>
+  <circle cx="102" cy="311" r="5" fill="#06b6d4"/>
+  <text x="116" y="316" font-size="12" fill="#155e75">② 摘要层 summary（压缩）</text>
+  <rect x="86" y="336" width="208" height="38" rx="8" fill="#f0fdf4" stroke="#10b981" stroke-width="1.2"/>
+  <circle cx="102" cy="355" r="5" fill="#10b981"/>
+  <text x="116" y="360" font-size="12" fill="#065f46">③ 偏好层 preference（key）</text>
+
+  <line x1="190" y1="388" x2="190" y2="414" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <!-- DB cylinder -->
+  <rect x="100" y="416" width="180" height="56" rx="10" fill="#f0fdf4" stroke="#10b981" stroke-width="1.5"/>
+  <text x="190" y="440" text-anchor="middle" font-size="13" font-weight="600" fill="#065f46">SQLite + FTS5</text>
+  <text x="190" y="460" text-anchor="middle" font-size="11" fill="#047857">本地 ~/.dsh</text>
+
+  <line x1="190" y1="472" x2="190" y2="498" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="100" y="500" width="180" height="36" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="190" y="523" text-anchor="middle" font-size="12" font-weight="600" fill="#4338ca">/snapshot.search 检索</text>
+
+  <!-- side chips: encryption + versioning -->
+  <rect x="300" y="430" width="170" height="44" rx="10" fill="#fff7ed" stroke="#f59e0b" stroke-width="1.3"/>
+  <text x="385" y="451" text-anchor="middle" font-size="12" fill="#92400e">AES-256-GCM</text>
+  <text x="385" y="467" text-anchor="middle" font-size="11" fill="#b45309">静态加密 / 加密擦除</text>
+  <rect x="300" y="486" width="170" height="44" rx="10" fill="#faf5ff" stroke="#a855f7" stroke-width="1.3"/>
+  <text x="385" y="507" text-anchor="middle" font-size="12" fill="#6b21a8">版本控制 git</text>
+  <text x="385" y="523" text-anchor="middle" font-size="11" fill="#7e22ce">history / rollback</text>
+  <line x1="280" y1="444" x2="300" y2="452" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4 3"/>
+  <line x1="280" y1="500" x2="300" y2="508" stroke="#a855f7" stroke-width="1.5" stroke-dasharray="4 3"/>
+
+  <!-- RIGHT: New pipeline -->
+  <text x="730" y="92" text-anchor="middle" font-size="13" font-weight="600" fill="#8b5cf6">新对话 · New Session</text>
+  <rect x="610" y="100" width="240" height="42" rx="10" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="1.5"/>
+  <text x="730" y="126" text-anchor="middle" font-size="13" fill="#5b21b6">对话上下文头部（Context）</text>
+
+  <line x1="730" y1="142" x2="730" y2="166" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="610" y="168" width="240" height="38" rx="10" fill="#f5f3ff" stroke="#8b5cf6" stroke-width="1.5"/>
+  <text x="730" y="192" text-anchor="middle" font-size="13" font-weight="600" fill="#6d28d9">/import &lt;id&gt;　选择模式</text>
+
+  <!-- branch inject -->
+  <rect x="610" y="218" width="240" height="50" rx="10" fill="#ecfeff" stroke="#06b6d4" stroke-width="1.5"/>
+  <text x="730" y="240" text-anchor="middle" font-size="13" font-weight="600" fill="#155e75">仅新信息 · inject</text>
+  <text x="730" y="258" text-anchor="middle" font-size="11" fill="#0e7490">只读背景简报，不回写</text>
+  <!-- branch merge -->
+  <rect x="610" y="282" width="240" height="50" rx="10" fill="#faf5ff" stroke="#a855f7" stroke-width="1.5"/>
+  <text x="730" y="304" text-anchor="middle" font-size="13" font-weight="600" fill="#6b21a8">合并 · merge</text>
+  <text x="730" y="322" text-anchor="middle" font-size="11" fill="#7e22ce">融合引擎 + 冲突裁决</text>
+
+  <line x1="730" y1="332" x2="730" y2="356" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+  <rect x="610" y="358" width="240" height="48" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5"/>
+  <text x="730" y="380" text-anchor="middle" font-size="12" font-weight="600" fill="#3730a3">注入 Context Head</text>
+  <text x="730" y="397" text-anchor="middle" font-size="11" fill="#4338ca">AI 立即获得历史共识</text>
+
+  <!-- dashed selection from DB to /import -->
+  <path d="M280,444 C450,444 470,187 610,187" fill="none" stroke="#8b5cf6" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arrowP)"/>
+  <text x="452" y="430" text-anchor="middle" font-size="11" fill="#7c3aed">选择快照</text>
+
+  <!-- footer note -->
+  <text x="460" y="612" text-anchor="middle" font-size="11" fill="#94a3b8">数据全部本地存储，不上传服务器 · 快照为纯文本 Markdown，任何能读文本的 Agent 均可接手</text>
+</svg>

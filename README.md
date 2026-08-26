@@ -1,9 +1,22 @@
 # DialogueContextBridge · 对话上下文桥接
 
+<p align="center">
+  <img src="website/assets/logo.svg" alt="DialogueContextBridge logo" width="120" />
+</p>
+
 > 把一次对话的「已了解信息」打包成可移植的知识单元，一键引入新对话。
 
-[![CI](https://github.com/OWNER/DialogueContextBridge/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/DialogueContextBridge/actions/workflows/ci.yml)
+<p align="center">
+  <a href="https://shadowquill.github.io/DialogueContextBridge/">📖 文档站点</a> ·
+  <a href="https://github.com/ShadowQuill/DialogueContextBridge/blob/main/docs/architecture.md">架构设计</a> ·
+  <a href="https://github.com/ShadowQuill/DialogueContextBridge/blob/main/docs/snapshot-schema.md">快照格式</a> ·
+  <a href="https://github.com/ShadowQuill/DialogueContextBridge/blob/main/docs/dsh-host-integration.md">宿主联调</a>
+</p>
+
+[![CI](https://github.com/ShadowQuill/DialogueContextBridge/actions/workflows/ci.yml/badge.svg)](https://github.com/ShadowQuill/DialogueContextBridge/actions/workflows/ci.yml)
+[![Deploy Docs](https://github.com/ShadowQuill/DialogueContextBridge/actions/workflows/deploy-docs.yml/badge.svg)](https://github.com/ShadowQuill/DialogueContextBridge/actions/workflows/deploy-docs.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![Docs Site](https://img.shields.io/badge/Website-shadowsquill.github.io-blue?logo=githubpages)](https://shadowquill.github.io/DialogueContextBridge/)
 
 ## 这是什么
 
@@ -39,6 +52,8 @@ flowchart LR
   F --> G[Markdown + Schema 头]
   G --> H[(SQLite + FTS5)]
 ```
+
+![三层快照数据流](website/assets/architecture.svg)
 
 ## 快速开始
 
