@@ -1,17 +1,17 @@
 # DialogueContextBridge · 对话上下文桥接
 
-<p align="center">
-  <img src="website/assets/logo.svg" alt="DialogueContextBridge logo" width="120" />
-</p>
-
 > 把一次对话的「已了解信息」打包成可移植的知识单元，一键引入新对话。
 
-<p align="center">
-  <a href="https://shadowquill.github.io/DialogueContextBridge/">📖 文档站点</a> ·
-  <a href="https://github.com/ShadowQuill/DialogueContextBridge/blob/main/docs/architecture.md">架构设计</a> ·
-  <a href="https://github.com/ShadowQuill/DialogueContextBridge/blob/main/docs/snapshot-schema.md">快照格式</a> ·
-  <a href="https://github.com/ShadowQuill/DialogueContextBridge/blob/main/docs/dsh-host-integration.md">宿主联调</a>
+<p>
+  <img src="website/assets/social-preview.svg" alt="DialogueContextBridge 对话上下文桥接" width="100%" />
 </p>
+
+| 资源 | 链接 |
+| --- | --- |
+| 📖 文档站点 | [shadowquill.github.io/DialogueContextBridge](https://shadowquill.github.io/DialogueContextBridge/) |
+| 架构设计 | [docs/architecture.md](https://github.com/ShadowQuill/DialogueContextBridge/blob/main/docs/architecture.md) |
+| 快照格式 | [docs/snapshot-schema.md](https://github.com/ShadowQuill/DialogueContextBridge/blob/main/docs/snapshot-schema.md) |
+| 宿主联调 | [docs/dsh-host-integration.md](https://github.com/ShadowQuill/DialogueContextBridge/blob/main/docs/dsh-host-integration.md) |
 
 [![CI](https://github.com/ShadowQuill/DialogueContextBridge/actions/workflows/ci.yml/badge.svg)](https://github.com/ShadowQuill/DialogueContextBridge/actions/workflows/ci.yml)
 [![Deploy Docs](https://github.com/ShadowQuill/DialogueContextBridge/actions/workflows/deploy-docs.yml/badge.svg)](https://github.com/ShadowQuill/DialogueContextBridge/actions/workflows/deploy-docs.yml)

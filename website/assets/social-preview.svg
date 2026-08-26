@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" role="img" aria-label="DialogueContextBridge 对话上下文桥接">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="0.55" stop-color="#0f1b30"/>
+      <stop offset="1" stop-color="#13233f"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#818cf8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.78" cy="0.32" r="0.5">
+      <stop offset="0" stop-color="#2dd4bf" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#2dd4bf" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="dots" width="34" height="34" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.4" fill="#9fb3d1" opacity="0.10"/>
+    </pattern>
+  </defs>
+
+  <!-- background -->
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <rect width="1280" height="640" fill="url(#dots)"/>
+  <rect width="1280" height="640" fill="url(#glow)"/>
+
+  <!-- brand mark -->
+  <g transform="translate(86,150)">
+    <rect x="0" y="0" width="58" height="58" rx="14" fill="#0b1220" stroke="url(#accent)" stroke-width="2.5"/>
+    <path d="M14 30 C24 14, 34 46, 44 30" fill="none" stroke="url(#accent)" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="14" cy="30" r="4.5" fill="#2dd4bf"/>
+    <circle cx="44" cy="30" r="4.5" fill="#818cf8"/>
+  </g>
+
+  <!-- title -->
+  <text x="160" y="192" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="52" font-weight="800" fill="#f8fafc">DialogueContextBridge</text>
+  <text x="88" y="252" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="34" font-weight="700" fill="url(#accent)">对话上下文桥接</text>
+  <text x="88" y="306" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="25" font-weight="400" fill="#cbd5e1">把一次对话的「已了解信息」打包成可移植的知识单元，</text>
+  <text x="88" y="344" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="25" font-weight="400" fill="#cbd5e1">一键引入新对话，不再重复解释背景。</text>
+
+  <!-- tech tags -->
+  <g font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="18" font-weight="600">
+    <rect x="88" y="382" width="118" height="34" rx="17" fill="#16263f" stroke="#2b3b58"/>
+    <text x="147" y="404" fill="#7dd3fc" text-anchor="middle">DSH 插件</text>
+    <rect x="218" y="382" width="118" height="34" rx="17" fill="#16263f" stroke="#2b3b58"/>
+    <text x="277" y="404" fill="#a5b4fc" text-anchor="middle">Cordis</text>
+    <rect x="348" y="382" width="132" height="34" rx="17" fill="#16263f" stroke="#2b3b58"/>
+    <text x="414" y="404" fill="#5eead4" text-anchor="middle">SQLite + FTS5</text>
+    <rect x="492" y="382" width="150" height="34" rx="17" fill="#16263f" stroke="#2b3b58"/>
+    <text x="567" y="404" fill="#f0abfc" text-anchor="middle">AES-256-GCM</text>
+  </g>
+
+  <!-- right: three-layer bridge -->
+  <g transform="translate(800,0)">
+    <!-- source bubble -->
+    <g>
+      <rect x="0" y="150" width="150" height="64" rx="16" fill="#16263f" stroke="url(#accent)" stroke-width="2"/>
+      <text x="75" y="189" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="22" font-weight="700" fill="#e2e8f0" text-anchor="middle">源对话</text>
+    </g>
+    <!-- target bubble -->
+    <g>
+      <rect x="300" y="150" width="150" height="64" rx="16" fill="#16263f" stroke="url(#accent)" stroke-width="2"/>
+      <text x="375" y="189" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="22" font-weight="700" fill="#e2e8f0" text-anchor="middle">新对话</text>
+    </g>
+    <!-- bridge arrow -->
+    <path d="M158 182 C210 182, 240 182, 292 182" fill="none" stroke="url(#accent)" stroke-width="3" stroke-dasharray="2 7" stroke-linecap="round"/>
+
+    <!-- three layer cards -->
+    <g font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif">
+      <!-- layer 1 verbatim -->
+      <rect x="120" y="252" width="220" height="58" rx="12" fill="#0e2a22" stroke="#34d399" stroke-width="2"/>
+      <circle cx="148" cy="281" r="13" fill="#34d399"/>
+      <text x="148" y="287" font-size="15" font-weight="800" fill="#06281d" text-anchor="middle">①</text>
+      <text x="172" y="278" font-size="19" font-weight="700" fill="#d1fae5">关键消息原文</text>
+      <text x="172" y="300" font-size="14" fill="#86efac">逐字保留 · 禁止压缩</text>
+      <!-- layer 2 summary -->
+      <rect x="120" y="320" width="220" height="58" rx="12" fill="#0e1f33" stroke="#60a5fa" stroke-width="2"/>
+      <circle cx="148" cy="349" r="13" fill="#60a5fa"/>
+      <text x="148" y="355" font-size="15" font-weight="800" fill="#06204a" text-anchor="middle">②</text>
+      <text x="172" y="346" font-size="19" font-weight="700" fill="#dbeafe">结构化摘要</text>
+      <text x="172" y="368" font-size="14" fill="#93c5fd">/compile 压缩为要点</text>
+      <!-- layer 3 preference -->
+      <rect x="120" y="388" width="220" height="58" rx="12" fill="#2a1020" stroke="#f472b6" stroke-width="2"/>
+      <circle cx="148" cy="417" r="13" fill="#f472b6"/>
+      <text x="148" y="423" font-size="15" font-weight="800" fill="#3b0a25" text-anchor="middle">③</text>
+      <text x="172" y="414" font-size="19" font-weight="700" fill="#fce7f3">偏好与设定</text>
+      <text x="172" y="436" font-size="14" fill="#f9a8d4">按 key 归档 · 跨快照裁决</text>
+    </g>
+
+    <!-- connector from layers to target bubble -->
+    <path d="M340 310 C372 270, 372 230, 374 214" fill="none" stroke="#475569" stroke-width="2"/>
+    <text x="190" y="470" font-family="'PingFang SC','Helvetica Neue',Arial,sans-serif" font-size="15" fill="#64748b">三层快照 → 桥接跨会话上下文，零丢失</text>
+  </g>
+</svg>
