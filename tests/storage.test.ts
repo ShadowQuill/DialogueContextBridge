@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { tmpdir } from 'node:os';
 import { compileSnapshot, type CompileResult } from '../src/core/compiler';
 import { extractIndexText } from '../src/core/serializer';
 import { createCipher } from '../src/security/crypto';
@@ -120,6 +121,7 @@ describe('bridge service', () => {
       cipher: createCipher(passphrase),
       logger: silentLogger,
       options: { maxTokens: 4096, maxBulletsPerSection: 6, indexPlaintextWhenEncrypted, mergePolicy: 'newWins' },
+      dataDir: tmpdir(),
     });
   }
 

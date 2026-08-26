@@ -153,10 +153,12 @@ describe('plugin load integration', () => {
       'snapshot-rollback',
       'import',
       'dcb',
+      'dcb-export',
+      'dcb-import',
     ]) {
       expect(names).toContain(expected);
     }
-    expect(names.length).toBe(11);
+    expect(names.length).toBe(13);
   });
 
   it('端到端跑通 编译落库 → 检索 → 读取 → 导入(inject/merge) → 删除', async () => {

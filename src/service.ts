@@ -1,11 +1,20 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { compileSnapshot, type CompileResult } from './core/compiler';
 import { buildBrief, type ImportMode, type MergePolicy } from './core/inject';
-import { extractIndexText, parseSnapshot, verifySnapshotDocument } from './core/serializer';
+import {
+  extractIndexText,
+  parseSnapshot,
+  serializeSnapshot,
+  verifySnapshotDocument,
+} from './core/serializer';
 import type { Summarizer } from './core/summarize';
 import type { Cipher } from './security/crypto';
 import type { SearchHit, SnapshotRecord, SnapshotRepository } from './storage/repository';
 import type { VersionEntry, VersioningController } from './versioning/store';
 import type { ContextSnapshot, ConversationMessage } from './types';
+import { createSnapshotId } from './utils/id';
+import { ensureDir } from './utils/paths';
 import type { Logger } from './utils/logger';
 
 /** 服务层依赖。 */
@@ -31,6 +40,8 @@ export interface BridgeServiceDeps {
   summarize?: Summarizer;
   /** 可选的记忆库版本控制（Phase 4 git 自动提交与回滚）；未注入则不做版本化。 */
   versioning?: VersioningController;
+  /** 插件数据目录（绝对路径），导出文件的默认落盘位置。 */
+  dataDir: string;
 }
 
 /** 编译请求。 */
@@ -73,6 +84,38 @@ export interface ReadOutcome {
   snapshot: ContextSnapshot;
   /** 正文校验和是否一致。 */
   intact: boolean;
+}
+
+/** 导出结果（文件导入/导出功能）。 */
+export interface ExportOutcome {
+  /** 被导出的快照 id。 */
+  snapshotId: string;
+  /** 标题。 */
+  title: string;
+  /** token 估算值。 */
+  tokenEstimate: number;
+  /** 源快照在库内是否为密文（导出文件统一为明文）。 */
+  encrypted: boolean;
+  /** 导出的文件是否为明文（总是 true：文件格式可被任意 Agent 接手）。 */
+  writtenPlaintext: boolean;
+  /** 落盘的绝对文件路径。 */
+  path: string;
+}
+
+/** 从 Markdown 文档导入的结果（文件导入/导出功能）。 */
+export interface ImportFileOutcome {
+  /** 落库后新分配的快照 id（避免覆盖本地已有 id）。 */
+  snapshotId: string;
+  /** 文件中原始的快照 id。 */
+  fromSnapshotId: string;
+  /** 标题。 */
+  title: string;
+  /** token 估算值。 */
+  tokenEstimate: number;
+  /** 文件正文校验和是否与声明一致。 */
+  intact: boolean;
+  /** 是否为预演（未落库）。 */
+  dryRun: boolean;
 }
 
 /** 导入请求（Phase 2 导入注入）。 */
@@ -140,40 +183,51 @@ export function createBridgeService(deps: BridgeServiceDeps): BridgeService {
   };
 
   /**
+   * 落库单个快照（内部复用）。
+   *
+   * 负责「加密 → 写库 → 版本提交」的统一编排，被编译落库与文件导入共用。
+   *
+   * @param snapshot - 已就绪的快照对象（其 `meta.snapshotId` 决定落库键）。
+   * @param markdown - 与快照一致的明文 Markdown 文档（用于加密落盘与版本提交）。
+   * @returns 落库结果。
+   */
+  const storeSnapshot = (snapshot: ContextSnapshot, markdown: string): SaveOutcome => {
+    const encrypted = cipher.enabled;
+    const document = cipher.seal(markdown);
+    const shouldIndex = !encrypted || options.indexPlaintextWhenEncrypted;
+
+    const sealed: ContextSnapshot = {
+      ...snapshot,
+      meta: { ...snapshot.meta, encrypted },
+    };
+
+    repository.save({
+      snapshot: sealed,
+      document,
+      index: shouldIndex ? extractIndexText(sealed) : undefined,
+    });
+
+    logger.info(
+      `已保存快照 ${sealed.meta.snapshotId}（${sealed.meta.tokenEstimate} tokens，` +
+        `加密=${encrypted}，索引=${shouldIndex}）`,
+    );
+
+    return {
+      snapshotId: sealed.meta.snapshotId,
+      title: sealed.meta.title,
+      tokenEstimate: sealed.meta.tokenEstimate,
+      encrypted,
+      indexed: shouldIndex,
+    };
+  };
+
+  /**
    * 落库单个快照。
    *
    * @param result - 编译结果。
    * @returns 落库结果。
    */
-  const persist = (result: CompileResult): SaveOutcome => {
-    const encrypted = cipher.enabled;
-    const document = cipher.seal(result.markdown);
-    const shouldIndex = !encrypted || options.indexPlaintextWhenEncrypted;
-
-    const snapshot: ContextSnapshot = {
-      ...result.snapshot,
-      meta: { ...result.snapshot.meta, encrypted },
-    };
-
-    repository.save({
-      snapshot,
-      document,
-      index: shouldIndex ? extractIndexText(snapshot) : undefined,
-    });
-
-    logger.info(
-      `已保存快照 ${snapshot.meta.snapshotId}（${snapshot.meta.tokenEstimate} tokens，` +
-        `加密=${encrypted}，索引=${shouldIndex}）`,
-    );
-
-    return {
-      snapshotId: snapshot.meta.snapshotId,
-      title: snapshot.meta.title,
-      tokenEstimate: snapshot.meta.tokenEstimate,
-      encrypted,
-      indexed: shouldIndex,
-    };
-  };
+  const persist = (result: CompileResult): SaveOutcome => storeSnapshot(result.snapshot, result.markdown);
 
   /**
    * 落库后提交一次版本（Phase 4 记忆库版本控制）。
@@ -370,6 +424,113 @@ export function createBridgeService(deps: BridgeServiceDeps): BridgeService {
   },
 
   /**
+   * 把单个快照导出为独立 `.md` 文件（跨设备 / 跨账号可移植）。
+   *
+   * 无论库内是否加密，导出文件统一为**明文**快照文档——这正是 `parseSnapshot`
+   * 可直接接手的格式，也满足 spec 的「任何能读文本的 Agent 都能接手」。
+   * 加密快照会先在本机解密再写出，因此导出即代表你有意把该内容落到文件。
+   *
+   * @param snapshotId - 快照 id。
+   * @param outDir - 可选的导出目录；缺省为 `<dataDir>/exports`。
+   * @returns 导出结果；快照不存在抛出可读错误。
+   */
+  exportSnapshot(snapshotId: string, outDir?: string): ExportOutcome {
+    const read = openSnapshot(snapshotId);
+    if (!read) throw new Error(`未找到快照 ${snapshotId}`);
+    const dir = ensureDir(outDir ?? join(deps.dataDir, 'exports'));
+    const safeTitle = read.record.title.replace(/[^\p{L}\p{N}_-]+/gu, '_').slice(0, 40) || 'snapshot';
+    const fileName = `${snapshotId}__${safeTitle}.md`;
+    const filePath = join(dir, fileName);
+    writeFileSync(filePath, read.markdown, 'utf8');
+    logger.info(`已导出快照 ${snapshotId} 到 ${filePath}`);
+    return {
+      snapshotId,
+      title: read.record.title,
+      tokenEstimate: read.record.tokenEstimate,
+      encrypted: read.record.encrypted,
+      writtenPlaintext: true,
+      path: filePath,
+    };
+  },
+
+  /**
+   * 导出记忆库内全部快照。
+   *
+   * @param outDir - 可选的导出目录。
+   * @returns 每条快照的导出结果（单条失败只告警，不影响其余）。
+   */
+  exportAll(outDir?: string): ExportOutcome[] {
+    const results: ExportOutcome[] = [];
+    for (const record of repository.list({ limit: 1000 })) {
+      try {
+        results.push(this.exportSnapshot(record.snapshotId, outDir));
+      } catch (error) {
+        logger.warn(`导出快照 ${record.snapshotId} 失败（已跳过）: ${String(error)}`);
+      }
+    }
+    return results;
+  },
+
+  /**
+   * 从 Markdown 文档导入快照。
+   *
+   * 解析后**重新分配一个新 id** 落库，避免与本地已有快照（或同一文件重复导入）
+   * 发生覆盖；正文校验和会重算并写回，保证跨机迁移不丢信息。目标库若开启加密，
+   * 导入内容会按本地策略重新加密落盘。
+   *
+   * @param markdown - 快照 Markdown 文档。
+   * @param options.dryRun - 为 true 时只解析与校验、不落库。
+   * @returns 导入结果；文档非本插件快照时抛出可读错误。
+   */
+  importMarkdown(markdown: string, opts: { dryRun?: boolean } = {}): ImportFileOutcome {
+    const original = parseSnapshot(markdown);
+    const intact = verifySnapshotDocument(markdown);
+    const newId = createSnapshotId();
+    // 换 id 并重算校验和，得到可安全落库的文档。
+    const reDoc = serializeSnapshot({
+      ...original,
+      meta: { ...original.meta, snapshotId: newId },
+    }).markdown;
+    const snapshot = parseSnapshot(reDoc);
+
+    if (opts.dryRun) {
+      logger.info(`[dry-run] 解析快照 ${original.meta.snapshotId} → 将分配 ${newId}（未落库）`);
+      return {
+        snapshotId: newId,
+        fromSnapshotId: original.meta.snapshotId,
+        title: original.meta.title,
+        tokenEstimate: original.meta.tokenEstimate,
+        intact,
+        dryRun: true,
+      };
+    }
+
+    const outcome = storeSnapshot(snapshot, reDoc);
+    void versionSave(outcome.snapshotId, reDoc);
+    return {
+      snapshotId: outcome.snapshotId,
+      fromSnapshotId: original.meta.snapshotId,
+      title: outcome.title,
+      tokenEstimate: outcome.tokenEstimate,
+      intact,
+      dryRun: false,
+    };
+  },
+
+  /**
+   * 从 `.md` 文件导入快照（读盘后委托 {@link createBridgeService} 内部的
+   * `importMarkdown`）。
+   *
+   * @param filePath - 快照 `.md` 文件的绝对或相对路径。
+   * @param opts.dryRun - 为 true 时只解析与校验、不落库。
+   * @returns 导入结果；文件不存在或解析失败抛出可读错误。
+   */
+  importFile(filePath: string, opts: { dryRun?: boolean } = {}): ImportFileOutcome {
+    const markdown = readFileSync(filePath, 'utf8');
+    return this.importMarkdown(markdown, opts);
+  },
+
+  /**
    * 构建导入简报（Phase 2 导入注入）。
    *
    * 仅做渲染与编排，不触发任何宿主副作用（注入由命令层负责）。`merge` 模式下
@@ -455,6 +616,14 @@ export interface BridgeService {
   list(limit?: number, conversationId?: string): SnapshotRecord[];
   /** 读取并解密、解析快照。 */
   read(snapshotId: string): ReadOutcome | undefined;
+  /** 把单个快照导出为独立 `.md` 文件（默认落 `<dataDir>/exports`）。 */
+  exportSnapshot(snapshotId: string, outDir?: string): ExportOutcome;
+  /** 导出记忆库内全部快照。 */
+  exportAll(outDir?: string): ExportOutcome[];
+  /** 从 Markdown 文档导入快照（可 `--dry-run` 只解析不落库）。 */
+  importMarkdown(markdown: string, options?: { dryRun?: boolean }): ImportFileOutcome;
+  /** 从 `.md` 文件导入快照（读盘后委托 `importMarkdown`）。 */
+  importFile(filePath: string, options?: { dryRun?: boolean }): ImportFileOutcome;
   /** 构建导入简报（不触发宿主注入）。 */
   buildImport(request: ImportRequest): Promise<ImportOutcome | undefined>;
   /** 删除快照，实际删除返回 true。 */

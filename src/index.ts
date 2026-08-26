@@ -138,6 +138,7 @@ export function apply(ctx: CordisContext, config: Config): void {
       logger,
       options: liveOptions,
       versioning,
+      dataDir: resolveDataDir(config.dataDir),
     });
 
     // 把服务挂到 ctx.dcb：cordis 该 fork 要求先 provide 再 set，故直接用 provide

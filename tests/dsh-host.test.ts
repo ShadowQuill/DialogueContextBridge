@@ -201,7 +201,7 @@ describe('DSH host contract', () => {
   it('宿主提供了 commands 接缝，注册了全部命令', async () => {
     const { host, tmpDir } = await mount(true);
     cleanup.push(tmpDir);
-    expect(host.capturedCommands.length).toBe(11);
+    expect(host.capturedCommands.length).toBe(13);
     expect(host.commands).toBeDefined();
     expect(host.capturedCommands.map((c) => c.name)).toContain('compile');
     expect(host.capturedCommands.map((c) => c.name)).toContain('import');

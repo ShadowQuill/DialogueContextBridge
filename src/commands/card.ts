@@ -16,13 +16,17 @@ export interface CardOptions {
   subtitle?: string;
   /** 卡片正文（Markdown）。 */
   body?: string;
+  /** 卡片底部的提示 / 快捷操作（渲染为正文后的分隔区块）。 */
+  footerNote?: string;
 }
 
 /** 渲染一张卡片。 */
 export function card(opts: CardOptions): string {
   const head = [`> ${opts.icon ? `${opts.icon} ` : ''}**${opts.title}**`];
   if (opts.subtitle) head.push(`> ${opts.subtitle}`);
-  return [...head, '', opts.body ?? ''].join('\n');
+  const parts = [head.join('\n'), '', opts.body ?? ''];
+  if (opts.footerNote) parts.push('', '---', opts.footerNote);
+  return parts.join('\n');
 }
 
 /** 渲染两列键值表。 */

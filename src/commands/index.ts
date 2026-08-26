@@ -1,6 +1,7 @@
 import { registerCompileCommand } from './compile';
 import { registerImportCommand } from './import';
 import { registerManageCommands } from './manage';
+import { registerPortCommands } from './port';
 import { registerSaveCommand, registerQuickSaveCommand } from './save';
 import { registerSearchCommand } from './search';
 import type { CommandDeps } from './shared';
@@ -16,6 +17,8 @@ export type { CommandDeps } from './shared';
  * | `/compile` | 编译当前对话为三层快照草稿 |
  * | `/save` | 把草稿写入本地记忆库 |
  * | `/dcb-save` | 一键导出当前对话为可复制快照（Phase 4 一键操作） |
+ * | `/dcb-export` | 把快照导出为独立 `.md` 文件（跨设备 / 跨账号可移植） |
+ * | `/dcb-import` | 从 `.md` 文件导入快照到记忆库 |
  * | `/snapshot.search` | 关键词检索快照（FTS5） |
  * | `/snapshot.list` | 列出快照 |
  * | `/snapshot.show` | 查看快照完整文档 |
@@ -32,4 +35,5 @@ export function registerCommands(deps: CommandDeps): void {
   registerSearchCommand(deps);
   registerManageCommands(deps);
   registerImportCommand(deps);
+  registerPortCommands(deps);
 }

@@ -107,6 +107,32 @@ ctx.plugin(bridge, {
 /import snap_a1b2c3 --dry-run
 ```
 
+### 跨设备 / 跨账号迁移记忆（文件导入导出）
+
+快照文档是纯文本 Markdown + 自描述 Schema 头，可脱离本插件独立存在。导出为文件后，
+拷贝到另一台机器或账号，再用 `/dcb-import` 接手——这就是 spec 要求的「可迁移性」超越
+聊天内复制粘贴的形态。
+
+```bash
+# 导出单条快照为 .md 文件（默认落 <数据目录>/exports/）
+/dcb-export snap_a1b2c3
+
+# 导出全部快照
+/dcb-export --all
+
+# 指定导出目录
+/dcb-export --all -o ~/Desktop/my-snapshots
+
+# 先预览、不落库：解析并校验文件，确认内容对不对
+/dcb-import ~/Desktop/my-snapshots/snap_a1b2c3__xxx.md --dry-run
+
+# 导入到记忆库（自动分配新 id，绝不覆盖本地已有快照）
+/dcb-import ~/Desktop/my-snapshots/snap_a1b2c3__xxx.md
+```
+
+导入后会生成新 id（避免与本地或其他来源的相同 id 冲突覆盖），正文校验和重算后写回；
+目标库若开启加密，导入内容会按本地策略重新加密落盘。
+
 ### 打开 Web UI
 
 ```bash
@@ -131,6 +157,8 @@ dsh --profile web          # 启动并自动打开默认浏览器到 Web UI
 | `/import <id>` | 把历史快照引入当前对话：默认「仅新信息」，亦可「合并」 | `--mode inject\|merge` `--policy snapshotWins\|newWins\|timestamp` `-d, --dry-run` |
 | `/dcb <id>` | 一键台：带 `<id>` 等价 inject 一键引入；不带 `<id>` 显示近期快照与快捷操作 | — |
 | `/dcb-save` | 一键导出当前对话为快照：编译并落库，回显可复制的 Markdown 与 id（Phase 4 一键操作） | `--title` `--tags` `--max-tokens` |
+| `/dcb-export <id>` | 把快照导出为独立 `.md` 文件（明文、自描述 Schema 头，可被任意 Agent 接手） | `--all` `-o, --out <dir>` |
+| `/dcb-import <path>` | 从 `.md` 文件导入快照到记忆库（自动分配新 id 防覆盖） | `--dry-run` |
 
 `/compile` 与 `/save` 是有意分开的两步：快照一旦落库就可能被其他对话引入，必须由你确认内容后再持久化。若你更喜欢一步到位，把配置项 `autoSave` 打开即可。
 
@@ -231,6 +259,7 @@ docs(readme): 补充加密擦除说明
 - [x] **Phase 3** 合并模式：当前上下文与引入快照智能融合，偏好层按可配置规则裁决（`newWins` / `snapshotWins` / `timestamp`），冲突清单写入「裁决报告」供复核（`/import --mode merge [--policy ...]`，`merge.policy` 配置项）
 - [x] **Phase 4** UI 优化 / 一键操作 / 设置面板集成：经 `ctx.settings`（`installSettingsSection`）把 `Config` Schema 接入 DSH 设置面板，自动渲染配置表单并**热改无需重启**（日志级别、token 预算、合并策略、加密口令、版本控制开关均 live 生效；`dataDir` 变更需重启）；新增 `/dcb` 一键台（不带 id 显示近期快照与快捷操作）与 `/dcb-save` 一步导出可复制快照；记忆库版本控制此前已完成（`/snapshot-history` + `/snapshot-rollback` 回滚）
 - [x] **Phase 4.1** 卡片 UI 统一：新增 `src/commands/card.ts` 渲染助手（引用块标题带 + GFM 表格 + 状态徽标 + 快捷操作清单），`/dcb`、`/import`、`/save`、`/dcb-save` 回执统一为清爽卡片；设置表单字段描述收紧。注：DSH 0.1.x 的设置面板卡片由 harness 预编译进 web 包，外部插件无法注入自定义卡片，故卡片统一落在对话内呈现
+- [x] **Phase 4.2** 快照文件导入 / 导出：新增 `/dcb-export <id>`（`--all` 全量、`-o <dir>` 指定目录）把快照写成独立明文 `.md` 文件，以及 `/dcb-import <path>`（`--dry-run` 预演）从文件导入记忆库；复用 `serializer.ts` 的 `serializeSnapshot` / `parseSnapshot` / `verifySnapshotDocument` 保证往返零损失，导入自动分配新 id 防覆盖、按本地加密策略重加密落盘。顺带修 `parseFlags` 把 `--dry-run` 转驼峰 `dryRun`（修复 `/import --dry-run` 此前静默失效）
 
 ## License
 

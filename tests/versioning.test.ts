@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { tmpdir } from 'node:os';
 import { extractIndexText, parseSnapshot, serializeSnapshot } from '../src/core/serializer';
 import { createCipher } from '../src/security/crypto';
 import { createMemoryGitRunner } from '../src/versioning/git';
@@ -90,6 +91,7 @@ describe('BridgeService 版本控制集成', () => {
       cipher,
       logger: silentLogger,
       options: { maxTokens: 4096, maxBulletsPerSection: 6, indexPlaintextWhenEncrypted: false, mergePolicy: 'newWins' },
+      dataDir: tmpdir(),
       versioning: createVersioningController({ dataDir: '/tmp/dcb-test', git: createMemoryGitRunner('/tmp/dcb-test'), enabled: true }),
     });
 
@@ -124,6 +126,7 @@ describe('BridgeService 版本控制集成', () => {
       cipher: createCipher(),
       logger: silentLogger,
       options: { maxTokens: 4096, maxBulletsPerSection: 6, indexPlaintextWhenEncrypted: false, mergePolicy: 'newWins' },
+      dataDir: tmpdir(),
       // 不注入 versioning
     });
     const saved = await service.compileAndSave({ conversationId: 'conv-2', messages: sampleConversation(), title: 'x' });

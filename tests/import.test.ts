@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { tmpdir } from 'node:os';
 import {
   buildBrief,
   buildInjectBrief,
@@ -202,6 +203,7 @@ describe('BridgeService.buildImport（导入编排）', () => {
       cipher,
       logger: silentLogger,
       options: { maxTokens: 4096, maxBulletsPerSection: 6, indexPlaintextWhenEncrypted: false, mergePolicy: 'newWins' },
+      dataDir: tmpdir(),
     });
     const result = await compileSnapshot({
       conversationId: 'conv-1',

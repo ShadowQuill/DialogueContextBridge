@@ -119,14 +119,16 @@ export function parseFlags(rawInput: string): { args: string[]; options: Record<
     const token = tokens[i];
     if (token.startsWith('-') && token.length > 1) {
       const dashed = token.replace(/^-+/, '');
+      // 键名转驼峰：`--dry-run` → `dryRun`，`-d` → `d`，与命令层读取保持一致。
+      const key = dashed.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
       const eq = dashed.indexOf('=');
       if (eq >= 0) {
-        options[dashed.slice(0, eq)] = dashed.slice(eq + 1);
+        options[key] = dashed.slice(eq + 1);
       } else if (i + 1 < tokens.length && !tokens[i + 1].startsWith('-')) {
-        options[dashed] = tokens[i + 1];
+        options[key] = tokens[i + 1];
         i += 1;
       } else {
-        options[dashed] = true;
+        options[key] = true;
       }
     } else {
       args.push(token);
