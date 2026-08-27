@@ -14,9 +14,12 @@ export function registerSearchCommand(deps: CommandDeps): void {
   deps.registry({
     name: 'snapshot-search',
     description: '按关键词检索本地快照',
+    input: {
+      hint: '<关键词>（如 上下文桥接）',
+    },
     handler: guard(deps.logger, '/snapshot-search', async (ctx) => {
       const query = (asString(ctx.args[0]) ?? '').trim();
-      if (!query) return '请提供检索关键词，例如：`/snapshot-search 上下文桥接`。';
+      if (!query) return '请提供检索关键词，例如：/snapshot-search 上下文桥接';
 
       const limit = asPositiveInt(ctx.options.limit) ?? deps.config.searchLimit;
       const hits = deps.service.search(query, limit);

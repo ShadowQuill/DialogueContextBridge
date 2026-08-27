@@ -140,7 +140,9 @@ dsh --profile web          # 启动并自动打开默认浏览器到 Web UI
 # 后台运行且不自动开浏览器： dsh --profile web --no-open
 ```
 
-插件加载后，在对话里输入 `/dcb` 会返回一张**「记忆库总览」卡片**（近期快照表 + 一键操作清单）；`/dcb <id>`、`/save`、`/dcb-save`、`/import` 的回执也统一为卡片样式（引用块标题带 + GFM 表格 + 状态徽标）。设置面板中可看到「对话上下文桥接」配置卡片，所有配置**热改即时生效**。
+插件加载后，在对话里输入 `/dcb` 会返回一张**「记忆库总览」卡片**（近期快照表 + 一键操作清单）；它同时也是**功能导航主页**，列出全部命令的中文速查。所有命令都可在输入框按 `/`（或点菜单按钮）唤起**命令面板**，鼠标点选即执行，走宿主、不经模型、零 token——无需手打命令。命令回执统一为**纯文本卡片**（emoji 标题 + `·` 项目符号 + `→` 引导 + `─` 分隔线，DSH 命令回执不解析 Markdown，故不用任何标记符号）。
+
+> **手打命令也会被宿主拦截**：每个命令都声明了 `input` 输入提示符，因此即使在输入框**手打整条带参命令**（如 `/dcb-merge snap_a1b2c3 --policy newWins`）再回车，也会由宿主直接执行、不会当作聊天发给模型——从根上避免历史 `/import ... --mode merge` 被模型当成对话、烧 token 的问题。菜单点选与手打现在行为一致。
 
 ## 命令参考
 
@@ -155,8 +157,9 @@ dsh --profile web          # 启动并自动打开默认浏览器到 Web UI
 | `/snapshot-history <id>` | 查看快照版本历史（Phase 4 版本控制） | — |
 | `/snapshot-rollback <id>` | 回滚快照到历史版本并重新落库 | `--to <ref>` |
 | `/import <id>` | 把历史快照引入当前对话：默认「仅新信息」，亦可「合并」 | `--mode inject\|merge` `--policy snapshotWins\|newWins\|timestamp` `-d, --dry-run` |
+| `/dcb-merge <id>` | 一步融合快照的高频别名，等价 `/import <id> --mode merge`（少一次交互） | `--policy snapshotWins\|newWins\|timestamp` `-d, --dry-run` |
 | `/dcb <id>` | 一键台：带 `<id>` 等价 inject 一键引入；不带 `<id>` 显示近期快照与快捷操作 | — |
-| `/dcb-save` | 一键导出当前对话为快照：编译并落库，回显可复制的 Markdown 与 id（Phase 4 一键操作） | `--title` `--tags` `--max-tokens` |
+| `/dcb-save` | 一键导出当前对话为快照：编译并落库，回显可复制的 id 与引入命令（Phase 4 一键操作）。**默认省略整段快照全文**以压低对话历史体积 | `--title` `--tags` `--max-tokens` `--full`(回显完整 Markdown 全文) |
 | `/dcb-export <id>` | 把快照导出为独立 `.md` 文件（明文、自描述 Schema 头，可被任意 Agent 接手） | `--all` `-o, --out <dir>` |
 | `/dcb-import <path>` | 从 `.md` 文件导入快照到记忆库（自动分配新 id 防覆盖） | `--dry-run` |
 

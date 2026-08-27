@@ -24,6 +24,7 @@ export type { CommandDeps } from './shared';
  * | `/snapshot.show` | 查看快照完整文档 |
  * | `/snapshot.remove` | 删除快照 |
  * | `/import` | 把历史快照作为背景情报引入当前对话（Phase 2） |
+ * | `/dcb-merge` | 一步融合快照（等价 `/import <id> --mode merge`，高频单步别名） |
  * | `/dcb` | 一键台：带 id 一键引入；不带 id 显示近期快照与快捷操作（Phase 4） |
  *
  * @param deps - 命令依赖。

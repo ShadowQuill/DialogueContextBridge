@@ -21,6 +21,9 @@ export function registerCompileCommand(deps: CommandDeps): void {
   deps.registry({
     name: 'compile',
     description: '把当前对话编译为可移植的上下文快照草稿',
+    input: {
+      hint: '（无参数；--discard 丢弃草稿，--tags 标签，--description 标题）',
+    },
     handler: guard(deps.logger, '/compile', async (ctx) => {
       const {conversationId} = ctx;
 
@@ -47,12 +50,12 @@ export function registerCompileCommand(deps: CommandDeps): void {
       if (deps.config.autoSave) {
         const outcome = await deps.service.compileAndSave(request);
         return [
-          `**已编译并保存快照** \`${outcome.snapshotId}\``,
-          `- 标题：${outcome.title}`,
-          `- token 估算：${outcome.tokenEstimate}`,
-          `- 加密存储：${outcome.encrypted ? '是' : '否'}`,
+          `已编译并保存快照 ${outcome.snapshotId}`,
+          `· 标题：${outcome.title}`,
+          `· token 估算：${outcome.tokenEstimate}`,
+          `· 加密存储：${outcome.encrypted ? '是' : '否'}`,
           '',
-          '（`autoSave` 已开启，跳过了 `/save` 确认步骤。）',
+          '（autoSave 已开启，跳过了 /save 确认步骤。）',
         ].join('\n');
       }
 

@@ -60,12 +60,30 @@ export type CommandHandler = (
   ctx: CommandContext,
 ) => Promise<string | void> | string | void;
 
+/**
+ * 命令可选输入描述符。
+ *
+ * 重要：声明后，DSH 客户端（`dsh-client-ui-commands` 的 `matchEnter`）会在用户
+ * **手打带参命令并回车**时也走宿主拦截执行，而非把整行当作普通消息发给 LLM。
+ * 不声明时，只有「从 `/` 菜单点选」或「手打无参命令」才会被宿主拦截；手打带参
+ * 会落到 LLM（历史上导致 `/import <id> --mode merge` 被模型当成聊天、烧 token）。
+ * 因此本插件对全部宿主命令统一声明 `input`，从根上避免手打带参被误发模型。
+ */
+export interface CommandInputHint {
+  /** 输入框占位提示（用法示例），如 `<快照id> --mode merge`。 */
+  readonly hint: string;
+  /** 是否允许命令携带图片附件；默认 false。 */
+  readonly images?: boolean;
+}
+
 /** 平面命令定义（对应真实 dsh 的 `CommandDefinition` 子集）。 */
 export interface CommandDefinition {
   /** 小写命令名，不含前导斜杠，如 `compile`、`snapshot-list`。 */
   readonly name: string;
   /** 人类可读摘要，用于发现 UI。 */
   readonly description: string;
+  /** 可选输入提示；声明后手打带参命令也会被宿主拦截（见 {@link CommandInputHint}）。 */
+  readonly input?: CommandInputHint;
   /** 执行逻辑。 */
   readonly handler: CommandHandler;
 }
@@ -171,6 +189,9 @@ export function createDshCommandRegistry(ctx: CordisContext): CommandRegistry {
     const dshDef: DshCommandDefinition = {
       name: def.name,
       description: def.description,
+      input: def.input
+        ? { hint: def.input.hint, ...(def.input.images ? { images: true } : {}) }
+        : undefined,
       handler: async (inv: CommandInvocation): Promise<CommandResult> => {
         const { args, options } = parseFlags(inv.rawInput);
         try {

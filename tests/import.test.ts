@@ -345,9 +345,87 @@ describe('/import 命令层（模式选择引导）', () => {
       args: [],
       options: {},
     })) as string;
-    expect(reply).toContain('近期快照');
+    expect(reply).toContain('记忆库总览');
     expect(reply).toContain('snap_a1');
     expect(reply).toContain('/dcb-save');
-    expect(reply).toContain('一键导出');
+    expect(reply).toContain('导出当前对话');
+  });
+});
+
+describe('/dcb-merge 单步别名（= import --mode merge）', () => {
+  /** 最小命令依赖桩，记录 inject 调用与 buildImport 入参。 */
+  function fakeDeps() {
+    const injectCalls: string[] = [];
+    let lastRequest: Parameters<NonNullable<CommandDeps['service']['buildImport']>>[0] | undefined;
+    const handlers = new Map<string, (ctx: unknown) => unknown>();
+    const deps = {
+      registry: (def: { name: string; handler: (ctx: unknown) => unknown }) => {
+        handlers.set(def.name, def.handler);
+      },
+      service: {
+        buildImport: async (request: Parameters<NonNullable<CommandDeps['service']['buildImport']>>[0]) => {
+          lastRequest = request;
+          return {
+            snapshotId: request.snapshotId,
+            mode: request.mode ?? 'inject',
+            brief: '# 背景简报',
+            tokenEstimate: 10,
+            conflictCount: 0,
+          };
+        },
+        list: () => [],
+        stats: () => ({ total: 0 }),
+        read: () => undefined,
+      },
+      reader: async () => [],
+      injector: (_agent: unknown, brief: string) => {
+        injectCalls.push(brief);
+      },
+      config: { maxTokens: 4096 } as CommandDeps['config'],
+      logger: silentLogger,
+    } as unknown as CommandDeps;
+    return { deps, handlers, injectCalls, getLastRequest: () => lastRequest };
+  }
+
+  it('默认强制 merge 模式并真正注入', async () => {
+    const { deps, handlers, injectCalls, getLastRequest } = fakeDeps();
+    registerImportCommand(deps);
+    const reply = (await handlers.get('dcb-merge')!({
+      agent: { session: { deriveMessages: () => [] } },
+      conversationId: 'c1',
+      rawInput: 'snap_x',
+      args: ['snap_x'],
+      options: {},
+    })) as string;
+    expect(reply).toContain('已引入快照');
+    expect(getLastRequest()?.mode).toBe('merge');
+    expect(injectCalls).toHaveLength(1);
+  });
+
+  it('--policy 透传给 buildImport', async () => {
+    const { deps, handlers, getLastRequest } = fakeDeps();
+    registerImportCommand(deps);
+    await handlers.get('dcb-merge')!({
+      agent: { session: { deriveMessages: () => [] } },
+      conversationId: 'c1',
+      rawInput: 'snap_x --policy snapshotWins',
+      args: ['snap_x'],
+      options: { policy: 'snapshotWins' },
+    });
+    expect(getLastRequest()?.policy).toBe('snapshotWins');
+  });
+
+  it('缺少 id 时提示用法且不注入', async () => {
+    const { deps, handlers, injectCalls } = fakeDeps();
+    registerImportCommand(deps);
+    const reply = (await handlers.get('dcb-merge')!({
+      agent: { session: { deriveMessages: () => [] } },
+      conversationId: 'c1',
+      rawInput: '',
+      args: [],
+      options: {},
+    })) as string;
+    expect(reply).toContain('请提供要融合的快照 id');
+    expect(injectCalls).toHaveLength(0);
   });
 });

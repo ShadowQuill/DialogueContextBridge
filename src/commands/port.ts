@@ -27,12 +27,15 @@ export function registerPortCommands(deps: CommandDeps): void {
   deps.registry({
     name: 'dcb-export',
     description: '导出快照为独立 .md 文件（跨设备 / 跨账号可移植）',
+    input: {
+      hint: '<快照id> [--all 导出全部] [--out 输出目录]',
+    },
     handler: guard(deps.logger, '/dcb-export', async (ctx) => {
       const id = asString(ctx.args[0]);
       const all = asFlag(ctx.options.all) || asFlag(ctx.options.a);
       const outDir = asString(ctx.options.out) ?? asString(ctx.options.o);
       if (!id && !all) {
-        return '请提供快照 id（`/dcb-export <id>`）或加 `--all` 导出全部。';
+        return '请提供快照 id（/dcb-export <id>）或加 --all 导出全部。';
       }
 
       if (all) {
@@ -65,9 +68,12 @@ export function registerPortCommands(deps: CommandDeps): void {
   deps.registry({
     name: 'dcb-import',
     description: '从 .md 文件导入快照到记忆库（自动分配新 id，防覆盖）',
+    input: {
+      hint: '<.md 文件路径> [--dry-run 预览]',
+    },
     handler: guard(deps.logger, '/dcb-import', async (ctx) => {
       const file = asString(ctx.args[0]);
-      if (!file) return '请提供快照 .md 文件路径（`/dcb-import <path>`）。';
+      if (!file) return '请提供快照 .md 文件路径（/dcb-import <path>）。';
       const dryRun = asFlag(ctx.options.dryRun) || asFlag(ctx.options.d) || asFlag(ctx.options['dry-run']);
 
       const outcome = deps.service.importFile(file, { dryRun });
@@ -95,8 +101,8 @@ export function registerPortCommands(deps: CommandDeps): void {
           ['文件', file],
         ]),
         footerNote: actionList([
-          ['/dcb <id>', '一键引入'],
-          ['/snapshot-search <关键词>', '检索'],
+          ['一键引入', '/dcb <id>'],
+          ['检索', '/snapshot-search <关键词>'],
         ]),
       });
     }),
