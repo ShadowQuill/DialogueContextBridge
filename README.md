@@ -264,6 +264,13 @@ docs(readme): 补充加密擦除说明
 - [x] **Phase 4.1** 卡片 UI 统一：新增 `src/commands/card.ts` 渲染助手（引用块标题带 + GFM 表格 + 状态徽标 + 快捷操作清单），`/dcb`、`/import`、`/save`、`/dcb-save` 回执统一为清爽卡片；设置表单字段描述收紧。注：DSH 0.1.x 的设置面板卡片由 harness 预编译进 web 包，外部插件无法注入自定义卡片，故卡片统一落在对话内呈现
 - [x] **Phase 4.2** 快照文件导入 / 导出：新增 `/dcb-export <id>`（`--all` 全量、`-o <dir>` 指定目录）把快照写成独立明文 `.md` 文件，以及 `/dcb-import <path>`（`--dry-run` 预演）从文件导入记忆库；复用 `serializer.ts` 的 `serializeSnapshot` / `parseSnapshot` / `verifySnapshotDocument` 保证往返零损失，导入自动分配新 id 防覆盖、按本地加密策略重加密落盘。顺带修 `parseFlags` 把 `--dry-run` 转驼峰 `dryRun`（修复 `/import --dry-run` 此前静默失效）
 
+## 已知限制
+
+以下两点来自 DSH 运行时（0.1.x rc.2）本身的交互能力边界，**不是本插件的逻辑缺陷**，记录在案以免误判：
+
+- **带参命令气泡常驻「执行中…」**：当用户在输入框**手打带参命令**（如 `/dcb-merge snap_a1b2c3 --policy newWins`）回车时，命令经宿主 `matchEnter` 拦截路径执行；rc.2 下框架完成命令后未把气泡标记 done，于是气泡一直显示「执行中」。但命令结果**已正确返回并注入**，刷新页面或发送下一条消息即可清除提示。这是声明 `input` 以「根治手打烧 token」的必要代价——功能完全正常。菜单点选 / 无参命令无此现象。
+- **不支持气泡内可点按钮**：DSH 0.1.x 的命令回执只支持纯文本（`CommandResult.text`），无法在气泡里回传可点击的按钮 / 卡片；外部插件也无法注入输入框自定义芯片（客户端预编译 bundle）。因此「零打字」的交互形态是：在输入框按 `/`（或点 `+` 菜单按钮）唤起命令面板，鼠标点选即执行——真正的 in-bubble 按钮需等 DSH 升级或自定义 client 构建。
+
 ## License
 
 [MIT](./LICENSE)

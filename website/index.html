@@ -159,43 +159,48 @@
 
   <section>
     <div class="wrap">
-      <h2>三条命令跑通闭环</h2>
-      <pre># 1. 把当前对话编译为快照草稿（只在内存中，不写盘）
-/compile --title "上下文桥接架构评审" --tags 架构,phase1
+      <h2>几条命令跑通闭环</h2>
+      <pre># 1. 一步导出当前对话为可移植快照（编译 + 落库，等价 /compile + /save）
+/dcb-save --title "上下文桥接架构评审" --tags 架构,phase1
 
-# 2. 确认无误后落库
-/save
+# 2. 在任意时刻按关键词找回它
+/snapshot-search 上下文桥接
 
-# 3. 在任意时刻按关键词找回它
-/snapshot.search 上下文桥接
-
-# 4. 在新对话里一键引入 —— 默认「仅新信息」模式（只读背景，不回写）
+# 3. 在新对话里一键引入 —— 默认「仅新信息」模式（只读背景，不回写）
 /import snap_a1b2c3
 
 #    想让当前对话与历史快照融合？用 merge 模式
 /import snap_a1b2c3 --mode merge
 
+#    一步融合的别名（省一次交互）：/dcb-merge <id>
+/dcb-merge snap_a1b2c3 --policy newWins
+
 #    只看简报、不注入，先确认内容对不对
 /import snap_a1b2c3 --dry-run</pre>
+      <p class="lead">所有命令都可在输入框按 <code>/</code>（或点 <code>+</code> 菜单按钮）唤起命令面板，鼠标点选即执行，走宿主、不经模型、零 token。命令回执统一为<strong>纯文本卡片</strong>（emoji + <code>·</code>/<code>→</code>/<code>─</code>，DSH 不解析 Markdown，故不出现 <code>**</code>、反引号等符号）。每个命令都声明了输入提示，即使在输入框手打带参命令回车，也会由宿主直接拦截执行、不再误发模型。</p>
     </div>
   </section>
 
   <section>
     <div class="wrap">
-      <h2>命令参考</h2>
+      <h2>命令参考（共 14 个）</h2>
       <table>
         <thead><tr><th>命令</th><th>说明</th><th>常用选项</th></tr></thead>
         <tbody>
           <tr><td><code>/compile</code></td><td>编译当前对话为三层快照草稿并预览</td><td><code>--title</code> <code>--tags</code> <code>--max-tokens</code> <code>--full</code> <code>--discard</code></td></tr>
           <tr><td><code>/save</code></td><td>把草稿写入本地记忆库；无草稿时即时编译并保存</td><td><code>--title</code> <code>--tags</code></td></tr>
-          <tr><td><code>/snapshot.search</code></td><td>FTS5 全文检索（多关键词为 AND 语义）</td><td><code>-n, --limit</code></td></tr>
-          <tr><td><code>/snapshot.list</code></td><td>列出快照</td><td><code>-n</code> <code>--here</code></td></tr>
-          <tr><td><code>/snapshot.show</code></td><td>查看快照完整文档与完整性校验</td><td><code>--meta</code></td></tr>
-          <tr><td><code>/snapshot.remove</code></td><td>删除快照及其索引（不可撤销）</td><td>—</td></tr>
-          <tr><td><code>/snapshot.history</code></td><td>查看快照版本历史（Phase 4）</td><td>—</td></tr>
-          <tr><td><code>/snapshot.rollback</code></td><td>回滚快照到历史版本并重新落库</td><td><code>--to &lt;ref&gt;</code></td></tr>
+          <tr><td><code>/dcb-save</code></td><td>一步导出当前对话为快照（编译+落库，回显 id 与引入命令）</td><td><code>--title</code> <code>--tags</code> <code>--full</code></td></tr>
+          <tr><td><code>/snapshot-search</code></td><td>FTS5 全文检索（多关键词为 AND 语义）</td><td><code>-n, --limit</code></td></tr>
+          <tr><td><code>/snapshot-list</code></td><td>列出快照</td><td><code>-n</code> <code>--here</code></td></tr>
+          <tr><td><code>/snapshot-show</code></td><td>查看快照完整文档与完整性校验</td><td><code>--meta</code></td></tr>
+          <tr><td><code>/snapshot-remove</code></td><td>删除快照及其索引（不可撤销）</td><td>—</td></tr>
+          <tr><td><code>/snapshot-history</code></td><td>查看快照版本历史（Phase 4 版本控制）</td><td>—</td></tr>
+          <tr><td><code>/snapshot-rollback</code></td><td>回滚快照到历史版本并重新落库</td><td><code>--to &lt;ref&gt;</code></td></tr>
           <tr><td><code>/import</code></td><td>引入历史快照：默认「仅新信息」，亦可「合并」</td><td><code>--mode inject|merge</code> <code>--policy</code> <code>-d</code></td></tr>
-          <tr><td><code>/dcb</code></td><td>一键引入快照（等价 <code>/import</code> 的 inject 模式）</td><td>—</td></tr>
+          <tr><td><code>/dcb-merge</code></td><td>一步融合快照（等价 <code>/import &lt;id&gt; --mode merge</code>）</td><td><code>--policy newWins|snapshotWins|timestamp</code> <code>-d</code></td></tr>
+          <tr><td><code>/dcb</code></td><td>一键台：带 id 等价 inject 一键引入；不带 id 显示记忆库总览</td><td>—</td></tr>
+          <tr><td><code>/dcb-export</code></td><td>把快照导出为独立 <code>.md</code> 文件（跨设备/跨账号可移植）</td><td><code>--all</code> <code>-o &lt;dir&gt;</code></td></tr>
+          <tr><td><code>/dcb-import</code></td><td>从 <code>.md</code> 文件导入快照到记忆库（自动分配新 id 防覆盖）</td><td><code>--dry-run</code></td></tr>
         </tbody>
       </table>
     </div>
