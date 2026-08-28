@@ -126,6 +126,7 @@ function makeConfig(tmpDir: string): Config {
     encryption: { enabled: false, passphrase: '', indexPlaintext: false },
     logLevel: 'silent',
     merge: { policy: 'newWins' },
+    summary: { mode: 'extractive', provider: 'deepseek', model: '', maxTokens: 1024, temperature: 0.2 },
     versioning: { enabled: false },
   };
 }

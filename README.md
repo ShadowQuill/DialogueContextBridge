@@ -39,7 +39,7 @@ DialogueContextBridge 是一个 **DSH（DeepSeek Harness，一个面向大语言
 | 层 | 内容 | 处理策略 |
 | --- | --- | --- |
 | **① 关键消息原文** | 最终敲定的代码、决策结论、技术参数、硬性指令 | **逐字保留**，禁止压缩与截断 |
-| **② 结构化摘要** | 讨论背景、推导过程、中间试错、已排除方案 | 由 `/compile` 压缩为分层要点 |
+| **② 结构化摘要** | 讨论背景、推导过程、中间试错、已排除方案 | 由 `/compile` 压缩为分层要点（内置抽取式，或 `summary.mode=llm` 走宿主 LLM） |
 | **③ 用户偏好与设定** | 风格偏好、角色设定、项目硬性约束 | 按稳定 `key` 归档，便于跨快照裁决 |
 
 这个分层是为了解决「摘要损失」：把不可压缩的东西和可压缩的东西分开处理，而不是对整段对话做一次无差别摘要。
@@ -182,7 +182,14 @@ dsh --profile web          # 启动并自动打开默认浏览器到 Web UI
 | `encryption.indexPlaintext` | `false` | 加密时是否仍建明文索引（**默认关闭**，开启会通过索引泄漏内容） |
 | `logLevel` | `info` | 日志级别 |
 | `merge.policy` | `newWins` | 合并模式（`/import --mode merge`）的冲突裁决规则：`newWins` 当前对话覆盖历史快照、`snapshotWins` 历史快照优先、`timestamp` 按时间戳先后 |
+| `summary.mode` | `extractive` | 摘要层压缩方式：`extractive` 内置抽取式（离线、零依赖、确定性可复现）；`llm` 调用宿主 LLM 生成更连贯、更擅长跨片段归纳的压缩摘要（需宿主已在该 provider 下配置可用模型） |
+| `summary.provider` | `deepseek` | `llm` 模式使用的 provider 路由（需宿主已配置对应 API Key） |
+| `summary.model` | `''` | `llm` 模式使用的模型 id；留空时由宿主从该 provider 自动选第一个可用模型 |
+| `summary.maxTokens` | `1024` | `llm` 模式单次摘要生成的最大 token 数 |
+| `summary.temperature` | `0.2` | `llm` 模式采样温度，越低越确定 |
 | `versioning.enabled` | `false` | 记忆库版本控制：每次保存/删除快照后自动 `git` 提交（数据目录下 `snapshots/` 子目录即仓库），并可用 `/snapshot-rollback` 回滚。**注意**：被版本化的是快照 Markdown 明文，git 历史不加密 |
+
+> **摘要层现在支持 LLM 增强**：把 `summary.mode` 切到 `llm`，`/compile`（以及 `merge` 模式对当前对话的现场编译）会把摘要层候选交给宿主 LLM 压缩，而非内置抽取式。LLM 调用失败时（网络抖动、模型未配置、返回空）会**自动回退**到抽取式，保证快照编译永不中断。该切换经设置面板热生效，无需重启。
 
 ### 关于加密擦除
 
@@ -207,7 +214,11 @@ DialogueContextBridge/
 │   ├── core/                 # 与宿主解耦的纯逻辑
 │   │   ├── lexicon.ts        # 语义识别词典（可扩展）
 │   │   ├── classifier.ts     # 消息 → 三层分类
-│   │   ├── summarize.ts      # 摘要器（内置抽取式，可注入 LLM 实现）
+│   │   ├── summarize.ts      # 摘要器契约与内置抽取式实现（Summarizer 可注入 LLM 实现）
+│   │   ├── llm-summarizer.ts  # 基于 LLM 的摘要器：LlmSummarizeClient 抽象 + 输出解析 + 失败回退
+│   ├── dsh/
+│   │   ├── types.ts           # 对接 dsh 0.1.1-rc.2 的接缝（命令注册 / 会话读取 / 上下文注入）
+│   │   ├── llm.ts             # 把宿主 ctx.llm 适配为 LlmSummarizeClient 摘要后端
 │   │   ├── budget.ts         # token 预算裁剪
 │   │   ├── serializer.ts     # Markdown + Schema 头 序列化/解析
 │   │   └── compiler.ts       # /compile 的完整流水线
@@ -253,7 +264,7 @@ docs(readme): 补充加密擦除说明
 
 ### 单元测试的边界
 
-`src/core`、`src/storage`、`src/security` 全部可在纯 Node 环境下测试，不需要启动 DSH。宿主相关的耦合被收敛在 `src/dsh/types.ts` 这一个文件里——若 DSH 的命令/对话 API 与此处声明不同，只需改这一处适配。
+`src/core`、`src/storage`、`src/security` 全部可在纯 Node 环境下测试，不需要启动 DSH。宿主相关的耦合被收敛在 `src/dsh/` 目录下（`types.ts` 的命令/会话/注入接缝 + `llm.ts` 的 LLM 后端适配）——若 DSH 的命令/对话/LLM API 与此处声明不同，只需改这几处适配。
 
 ## 路线图
 

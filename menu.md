@@ -55,7 +55,8 @@
 | --- | --- |
 | `compiler.ts` | `/compile` 的完整流水线：分类 → 摘要 → 预算裁剪 → 序列化 |
 | `classifier.ts` | 消息 → 三层（原文 / 摘要 / 偏好）分类器，可扩展 |
-| `summarize.ts` | 摘要器：内置抽取式实现，并预留 LLM 摘要器注入接口 |
+| `summarize.ts` | 摘要器契约 `Summarizer` 与内置抽取式实现（可注入 LLM 实现） |
+| `llm-summarizer.ts` | 基于 LLM 的摘要器：`LlmSummarizeClient` 抽象 + 模型输出解析 + 失败/空输出自动回退抽取式 |
 | `lexicon.ts` | 语义识别词典（判断消息是否含代码、决策、约束等信号） |
 | `budget.ts` | token 预算裁剪，确保快照在 `maxTokens` 限制内 |
 | `serializer.ts` | Markdown + Schema 头序列化 / 解析；完整性校验（checksum） |
@@ -86,7 +87,8 @@
 
 | 文件 | 作用 |
 | --- | --- |
-| `types.ts` | DSH 宿主能力的类型契约：`CommandService`、`ConversationService`、`InjectionService`。这是插件与真实运行时之间**唯一需要协商对齐**的文件。其中 `CommandDefinition.input`（`{hint, images?}`）声明后，宿主 `matchEnter` 会在用户**手打带参命令回车**时也走拦截执行——这是「全 14 命令声明 input、根治手打烧 token」的接缝所在 |
+| `types.ts` | DSH 宿主能力的类型接缝（对齐 dsh 0.1.1-rc.2）：`CommandRegistry`/`ConversationReader`/`ContextInjector` 三个适配函数 + `parseFlags`。这是插件与真实运行时之间**唯一需要协商对齐**的文件。其中命令的 `input` 提示声明后，宿主 `matchEnter` 会在用户**手打带参命令回车**时也走拦截执行——这是「全 14 命令声明 input、根治手打烧 token」的接缝所在 |
+| `llm.ts` | 把宿主 `ctx.llm`（LlmRuntime）适配为 `LlmSummarizeClient`：经 `runtime.stream(GenerateOptions, { purpose: 'compaction' })` 发一次性补全、拼接 `text-delta`，模型 id 为空时从 `listModels` 惰性解析默认模型。供 `summary.mode=llm` 的 LLM 摘要器使用 |
 
 ### `src/utils/` 工具
 
@@ -159,5 +161,5 @@
 
 - 如果你想**扩展命令**：优先改 `src/commands/` 和 `src/service.ts`。
 - 如果你想**接入新的 DSH 运行时**：只改 `src/dsh/types.ts` 的适配实现，不需要碰核心逻辑。
-- 如果你想**优化摘要质量**：替换或扩展 `src/core/summarize.ts` 的摘要器实现。
+- 如果你想**优化摘要质量**：替换或扩展 `src/core/summarize.ts` 的摘要器实现；也可把 `summary.mode` 切到 `llm`，由宿主 LLM 压缩摘要层（见 `src/core/llm-summarizer.ts` 与 `src/dsh/llm.ts`）。
 - 如果你想**改 UI 输出**：调 `src/commands/format.ts`。

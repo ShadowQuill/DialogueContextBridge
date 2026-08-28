@@ -8,6 +8,10 @@ import {
   createDshConversationReader,
   createDshContextInjector,
 } from './dsh/types';
+import { createDshLlmClient } from './dsh/llm';
+import { createExtractiveSummarizer, type Summarizer } from './core/summarize';
+import { createLlmSummarizer } from './core/llm-summarizer';
+import type { LlmRuntime } from '@deepseek-ai/dsh-llm';
 import { createCipher, type Cipher } from './security/crypto';
 import { createBridgeService, type BridgeService } from './service';
 import { openDatabase } from './storage/database';
@@ -43,6 +47,42 @@ function makeLiveVersioning(inner: VersioningController, isEnabled: () => boolea
     history: (id) => (isEnabled() ? inner.history(id) : Promise.resolve([])),
     readAtRef: (id, ref) => (isEnabled() ? inner.readAtRef(id, ref) : Promise.resolve(undefined)),
   };
+}
+
+/**
+ * 依据配置解析当前生效的摘要器。
+ *
+ * - `summary.mode === 'extractive'`（默认）：返回 `undefined`，由服务层退化为
+ *   内置抽取式摘要器（离线、零依赖、确定性可复现）。
+ * - `summary.mode === 'llm'`：用宿主 `ctx.llm` 构造 LLM 客户端，并包一层
+ *   `createLlmSummarizer`（失败/空输出自动回退抽取式）。
+ * - 若用户选了 `llm` 但宿主未提供 `ctx.llm`（llm 服务未加载），记录告警并回退
+ *   抽取式，避免插件加载失败。
+ *
+ * @param current - 当前完整配置。
+ * @param ctx - Cordis 上下文（用于读取可选 `ctx.llm`）。
+ * @param log - 日志器。
+ * @returns 摘要器函数；抽取式模式下返回 undefined（交给服务层默认实现）。
+ */
+function resolveSummarizer(current: Config, ctx: CordisContext, log: ReturnType<typeof createLogger>): Summarizer | undefined {
+  if (current.summary.mode !== 'llm') return undefined;
+  const runtime = (ctx as unknown as { llm?: LlmRuntime }).llm;
+  if (!runtime) {
+    log.warn('summary.mode=llm 但宿主未提供 ctx.llm，已回退为内置抽取式摘要。');
+    return undefined;
+  }
+  const client = createDshLlmClient(runtime, {
+    provider: current.summary.provider,
+    model: current.summary.model,
+    maxTokens: current.summary.maxTokens,
+    temperature: current.summary.temperature,
+  });
+  return createLlmSummarizer({
+    client,
+    maxBulletsPerSection: current.maxBulletsPerSection,
+    fallback: createExtractiveSummarizer(),
+    logger: (message) => log.warn(message),
+  });
 }
 
 /**
@@ -116,6 +156,12 @@ export function apply(ctx: CordisContext, config: Config): void {
     open: (text) => cipherRef.open(text),
   };
 
+  // 摘要器：用稳定包装器委托给 live 引用，使设置面板的 summary.mode 热更新即时生效。
+  // 声明在函数作用域（而非 try 内），以便 applyLive 能更新 summarizeRef。
+  const defaultExtractive = createExtractiveSummarizer();
+  let summarizeRef = resolveSummarizer(config, ctx, logger);
+  const liveSummarizer: Summarizer = (input) => (summarizeRef ?? defaultExtractive)(input);
+
   try {
     const repository = createSnapshotRepository(handle);
 
@@ -137,6 +183,7 @@ export function apply(ctx: CordisContext, config: Config): void {
       cipher,
       logger,
       options: liveOptions,
+      summarize: liveSummarizer,
       versioning,
       dataDir: resolveDataDir(config.dataDir),
     });
@@ -184,6 +231,7 @@ export function apply(ctx: CordisContext, config: Config): void {
     liveOptions.maxBulletsPerSection = next.maxBulletsPerSection;
     liveOptions.indexPlaintextWhenEncrypted = next.encryption.indexPlaintext;
     liveOptions.mergePolicy = next.merge.policy;
+    summarizeRef = resolveSummarizer(next, ctx, logger);
     cipherRef = createCipher(next.encryption.enabled ? next.encryption.passphrase : undefined);
     logger.setLevel(next.logLevel);
     if (next.dataDir !== config.dataDir) {
@@ -215,6 +263,8 @@ export {
   verifySnapshotDocument,
 } from './core/serializer';
 export { createExtractiveSummarizer, type Summarizer } from './core/summarize';
+export { createLlmSummarizer, parseLlmSummary, type LlmSummarizeClient } from './core/llm-summarizer';
+export { createDshLlmClient } from './dsh/llm';
 export { applyTokenBudget, estimateSnapshotTokens } from './core/budget';
 export { createCipher, decryptText, encryptText, isEncrypted, type Cipher } from './security/crypto';
 export { openDatabase, openMemoryDatabase, type DatabaseHandle } from './storage/database';

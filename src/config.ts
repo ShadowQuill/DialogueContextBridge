@@ -25,6 +25,33 @@ export const Config = Schema.object({
     .default(6)
     .description('结构化摘要中每个小节保留的最大要点数。'),
 
+  summary: Schema.object({
+    mode: Schema.union(['extractive', 'llm'] as const)
+      .default('extractive')
+      .description(
+        '摘要层压缩方式。extractive=内置抽取式（离线、零依赖、确定性可复现）；' +
+          'llm=调用宿主 LLM 生成更连贯、更擅长跨片段归纳的压缩摘要（需宿主已配置可用模型）。',
+      ),
+    provider: Schema.string()
+      .default('deepseek')
+      .description('llm 模式下使用的 provider 路由；需宿主已在该 provider 下配置可用的 API Key。'),
+    model: Schema.string()
+      .default('')
+      .description('llm 模式下使用的模型 id；留空时由宿主从该 provider 自动选择第一个可用模型。'),
+    maxTokens: Schema.natural()
+      .min(256)
+      .max(4096)
+      .default(1024)
+      .description('llm 模式单次摘要生成的最大 token 数。'),
+    temperature: Schema.number()
+      .min(0)
+      .max(1)
+      .default(0.2)
+      .description('llm 模式采样温度，越低越确定。'),
+  })
+    .default({ mode: 'extractive', provider: 'deepseek', model: '', maxTokens: 1024, temperature: 0.2 })
+    .description('摘要层（LLM 增强）'),
+
   maxHistoryMessages: Schema.natural()
     .min(1)
     .max(5000)

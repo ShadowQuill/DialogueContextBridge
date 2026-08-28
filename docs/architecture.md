@@ -122,13 +122,16 @@ src/
 ├── core/        # 与宿主完全解耦的纯逻辑（可在纯 Node 下单测）
 │   ├── lexicon.ts      # 语义识别词典（VERBATIM_RULES / PREFERENCE_RULES / SUMMARY_BUCKETS）
 │   ├── classifier.ts   # 消息 → 三层分类
-│   ├── summarize.ts    # 摘要器（内置抽取式，Summarizer 接口可注入 LLM 实现）
+│   ├── summarize.ts    # 摘要器契约 Summarizer 与内置抽取式实现（可注入 LLM 实现）
+│   ├── llm-summarizer.ts # 基于 LLM 的摘要器：LlmSummarizeClient 抽象 + 输出解析 + 失败回退
 │   ├── budget.ts       # token 预算裁剪
 │   ├── serializer.ts   # Markdown + Schema 头 序列化/解析
 │   └── compiler.ts     # /compile 完整流水线（编排以上纯逻辑）
 ├── storage/     # SQLite + FTS5（可替换为其他 KV/FTS 后端）
 ├── security/    # AES-256-GCM 封装
 ├── dsh/         # 宿主能力的「类型接缝」：最小接口 + 模块增强挂到 Cordis Context
+│   ├── types.ts  # 命令注册 / 会话读取 / 上下文注入 适配（对齐 dsh 0.1.1-rc.2）
+│   └── llm.ts    # 把宿主 ctx.llm 适配为 LlmSummarizeClient 摘要后端
 ├── commands/    # 命令层（仅此层依赖宿主）
 ├── service.ts   # 编译→预览→落库→检索的编排层（对外暴露 BridgeService）
 ├── config.ts    # schemastery 配置 Schema

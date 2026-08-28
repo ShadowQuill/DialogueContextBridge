@@ -137,7 +137,7 @@
         </div>
         <div class="layer s">
           <div class="k"><span class="dot" style="background:#06b6d4"></span>② 摘要层 summary</div>
-          <div class="d">讨论背景、推导过程、中间试错、已排除方案。由 <code>/compile</code> 压缩为分层要点。</div>
+          <div class="d">讨论背景、推导过程、中间试错、已排除方案。由 <code>/compile</code> 压缩为分层要点（内置抽取式；把配置 <code>summary.mode</code> 切到 <code>llm</code> 可走宿主 LLM，调用失败自动回退）。</div>
         </div>
         <div class="layer p">
           <div class="k"><span class="dot" style="background:#10b981"></span>③ 偏好层 preference</div>
