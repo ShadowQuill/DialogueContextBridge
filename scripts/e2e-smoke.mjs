@@ -52,6 +52,7 @@ function makeConfig(tmpDir) {
     autoSave: false,
     searchLimit: 10,
     encryption: { enabled: false, passphrase: '', indexPlaintext: false },
+    summary: { mode: 'extractive', provider: 'deepseek', model: '', maxTokens: 1024, temperature: 0.2 },
     logLevel: 'silent',
     merge: { policy: 'newWins' },
     versioning: { enabled: false },
