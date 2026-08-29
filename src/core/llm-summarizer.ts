@@ -56,15 +56,15 @@ export function parseLlmSummary(raw: string): SummarySection[] {
     if (heading) {
       current = { heading: heading[1].trim(), bullets: [] };
       sections.push(current);
-      continue;
-    }
-    const bullet = /^\s*[-*·]\s+(.+?)\s*$/.exec(line);
-    if (bullet) {
-      if (!current) {
-        current = { heading: '其他上下文', bullets: [] };
-        sections.push(current);
+    } else {
+      const bullet = /^\s*[-*·]\s+(.+?)\s*$/.exec(line);
+      if (bullet) {
+        if (!current) {
+          current = { heading: '其他上下文', bullets: [] };
+          sections.push(current);
+        }
+        current.bullets.push(bullet[1].trim());
       }
-      current.bullets.push(bullet[1].trim());
     }
   }
 

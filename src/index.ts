@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import type { Context as CordisContext } from '@deepseek-ai/cordis';
 import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings';
+import type { LlmRuntime } from '@deepseek-ai/dsh-llm';
 import { registerCommands } from './commands';
 import { assertEncryptionConfig, Config } from './config';
 import {
@@ -11,7 +12,6 @@ import {
 import { createDshLlmClient } from './dsh/llm';
 import { createExtractiveSummarizer, type Summarizer } from './core/summarize';
 import { createLlmSummarizer } from './core/llm-summarizer';
-import type { LlmRuntime } from '@deepseek-ai/dsh-llm';
 import { createCipher, type Cipher } from './security/crypto';
 import { createBridgeService, type BridgeService } from './service';
 import { openDatabase } from './storage/database';
