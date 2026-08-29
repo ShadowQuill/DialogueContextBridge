@@ -11,7 +11,7 @@ This project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixes
 - **应用配置兜底（`apply`）**：`apply` / `applyLive` 顶部统一 `Config(config)` 套用 Schema 默认值，兜底宿主传入残缺 config（如缺 `summary` 段）导致的崩溃，对真实 dsh（已填默认）幂等无害。
-- **CI（pnpm）**：`ci.yml` 改用 pnpm + `pnpm install --frozen-lockfile`；并修复 `pnpm-lock.yaml` 与 `package.json` 不同步（`@deepseek-ai/schemastery` 作用域 / 版本漂移）导致的 `ERR_PNPM_OUTDATED_LOCKFILE` 失败。
+- **CI（pnpm build / Node）**：修复 CI 在干净环境下 `verify` 矩阵全红——pnpm 9 默认不运行未列入白名单的依赖 build script，CI 从未批准过 `better-sqlite3` 的 build，致原生模块未编译、`require` 失败；`package.json` 新增 `pnpm.onlyBuiltDependencies: ["better-sqlite3"]` 令 CI 自动编译。Node 矩阵 `[18,20,22] → [20,22]`（`better-sqlite3@11` 需 Node 20+），`engines.node` 同步改为 `>=20`。另修正配置兜底引入的参数重赋值（`no-param-reassign`）lint 错误。
 
 ### Docs
 - 对齐 docs / website 到最新代码（`/dcb-merge`、纯文本卡片、input 拦截），新增「已知限制」章节；README / menu / 命令 docstring 同步命令计数。

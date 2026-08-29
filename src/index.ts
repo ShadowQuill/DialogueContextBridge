@@ -128,12 +128,12 @@ export { Config } from './config';
  * @param ctx - Cordis 上下文。
  * @param config - 插件配置（已由 Schema 校验并填充默认值）。
  */
-export function apply(ctx: CordisContext, config: Config): void {
-  assertEncryptionConfig(config);
+export function apply(ctx: CordisContext, incomingConfig: Config): void {
   // 归一化配置：套用 Schema 默认值，确保 summary / encryption / merge / versioning
   // 等子段齐全。部分宿主可能传入未套用默认值的局部 config，此处兜底，避免后续
   // resolveSummarizer 等直接读取 config.summary.mode 等子段时因 undefined 崩溃。
-  config = Config(config);
+  const config = Config(incomingConfig);
+  assertEncryptionConfig(config);
 
   const logger = createLogger(name, config.logLevel);
   const handle = openDatabase({ dataDir: config.dataDir, logger });
@@ -229,8 +229,8 @@ export function apply(ctx: CordisContext, config: Config): void {
    *
    * @param next - 经 Schema 默认值 + 组合层 + 用户层解析后的完整配置。
    */
-  function applyLive(next: Config): void {
-    next = Config(next);
+  function applyLive(incomingNext: Config): void {
+    const next = Config(incomingNext);
     Object.assign(liveConfig, next);
     liveOptions.maxTokens = next.maxTokens;
     liveOptions.maxBulletsPerSection = next.maxBulletsPerSection;
