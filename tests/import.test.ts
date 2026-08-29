@@ -189,6 +189,73 @@ describe('fuseSnapshots 冲突裁决策略（Phase 3）', () => {
   });
 });
 
+describe('fuseSnapshots · weighted 权重裁决（B2）', () => {
+  const basePrefs: PreferenceEntry[] = [
+    { key: 'style.x', value: '快照方', scope: 'style', explicit: false, createdAt: BASE_TIME },
+  ];
+  const overlayPrefs: PreferenceEntry[] = [
+    { key: 'style.x', value: '当前方', scope: 'style', explicit: false, createdAt: BASE_TIME + 1000 },
+  ];
+
+  it('base 权重更高时 base 胜（reason=weighted）', () => {
+    const base = makeSnapshot({ meta: { snapshotId: 'snap-base', weight: 5 }, preferences: basePrefs });
+    const overlay = makeSnapshot({ meta: { snapshotId: 'snap-overlay' }, preferences: overlayPrefs });
+    const { snapshot, conflicts } = fuseSnapshots(base, overlay, 'weighted');
+    expect(snapshot.preferences[0].value).toBe('快照方');
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0].reason).toBe('weighted');
+  });
+
+  it('overlay 权重更高时 overlay 胜（reason=weighted）', () => {
+    const base = makeSnapshot({ meta: { snapshotId: 'snap-base' }, preferences: basePrefs });
+    const overlay = makeSnapshot({ meta: { snapshotId: 'snap-overlay', weight: 3 }, preferences: overlayPrefs });
+    const { snapshot, conflicts } = fuseSnapshots(base, overlay, 'weighted');
+    expect(snapshot.preferences[0].value).toBe('当前方');
+    expect(conflicts[0].reason).toBe('weighted');
+  });
+
+  it('权重平局时回退到当前对话胜（reason=weighted-tie）', () => {
+    const base = makeSnapshot({ meta: { snapshotId: 'snap-base', weight: 2 }, preferences: basePrefs });
+    const overlay = makeSnapshot({ meta: { snapshotId: 'snap-overlay', weight: 2 }, preferences: overlayPrefs });
+    const { snapshot, conflicts } = fuseSnapshots(base, overlay, 'weighted');
+    expect(snapshot.preferences[0].value).toBe('当前方');
+    expect(conflicts[0].reason).toBe('weighted-tie');
+  });
+
+  it('默认权重（0）下 weighted 等同平局，当前对话胜', () => {
+    const base = makeSnapshot({ meta: { snapshotId: 'snap-base' }, preferences: basePrefs });
+    const overlay = makeSnapshot({ meta: { snapshotId: 'snap-overlay' }, preferences: overlayPrefs });
+    const { snapshot } = fuseSnapshots(base, overlay, 'weighted');
+    expect(snapshot.preferences[0].value).toBe('当前方');
+  });
+});
+
+describe('BridgeService.setWeight（权重落库与回读）', () => {
+  it('设置权重后落盘、read 回读一致；清为零、不存在返回 false', async () => {
+    const repository = createSnapshotRepository(handle);
+    const service = createBridgeService({
+      repository,
+      cipher: createCipher(),
+      logger: silentLogger,
+      options: { maxTokens: 4096, maxBulletsPerSection: 6, indexPlaintextWhenEncrypted: false, mergePolicy: 'newWins' },
+      dataDir: tmpdir(),
+    });
+    const saved = await service.compileAndSave({
+      conversationId: 'c-weight',
+      messages: sampleConversation(),
+      title: '加权测试',
+    });
+
+    expect(service.setWeight(saved.snapshotId, 7)).toBe(true);
+    expect(service.read(saved.snapshotId)?.snapshot.meta.weight).toBe(7);
+
+    expect(service.setWeight(saved.snapshotId, 0)).toBe(true);
+    expect(service.read(saved.snapshotId)?.snapshot.meta.weight).toBe(0);
+
+    expect(service.setWeight('snap-not-exist', 3)).toBe(false);
+  });
+});
+
 describe('BridgeService.buildImport（导入编排）', () => {
   /**
    * 用内存库搭一个已落库的样例快照，返回服务实例与快照 id。

@@ -290,6 +290,30 @@ export function createBridgeService(deps: BridgeServiceDeps): BridgeService {
   };
 
   /**
+   * 设置快照的合并权重（用户主动标记，供 `weighted` 策略使用）。
+   *
+   * 复用 `openSnapshot` 读取、`storeSnapshot` 重存（按 id 覆盖、重算校验和、
+   * 重新索引），并触发一次版本提交。权重只落在 `meta.weight`，不动三层内容。
+   *
+   * @param snapshotId - 快照 id。
+   * @param weight - 权重值（合并冲突时高者胜）。
+   * @returns 快照存在并已更新返回 true；不存在返回 false。
+   */
+  const setWeight = (snapshotId: string, weight: number): boolean => {
+    const read = openSnapshot(snapshotId);
+    if (!read) return false;
+    const updated: ContextSnapshot = {
+      ...read.snapshot,
+      meta: { ...read.snapshot.meta, weight },
+    };
+    const { markdown } = serializeSnapshot(updated);
+    storeSnapshot(updated, markdown);
+    void versionSave(snapshotId, markdown);
+    logger.info(`已更新快照 ${snapshotId} 权重为 ${weight}`);
+    return true;
+  };
+
+  /**
    * 构建导入简报（Phase 2 导入注入）。
    *
    * 仅做渲染与编排，不触发任何宿主副作用（注入由命令层负责）。`merge` 模式下
@@ -544,6 +568,17 @@ export function createBridgeService(deps: BridgeServiceDeps): BridgeService {
   },
 
     /**
+     * 设置快照的合并权重（用户主动标记，用于 `--policy weighted`）。
+     *
+     * @param snapshotId - 快照 id。
+     * @param weight - 权重值（合并冲突时高者胜）。
+     * @returns 快照存在并已更新返回 true；不存在返回 false。
+     */
+    setWeight(snapshotId: string, weight: number): boolean {
+      return setWeight(snapshotId, weight);
+    },
+
+    /**
      * 删除快照。
      *
      * @param snapshotId - 快照 id。
@@ -626,6 +661,8 @@ export interface BridgeService {
   importFile(filePath: string, options?: { dryRun?: boolean }): ImportFileOutcome;
   /** 构建导入简报（不触发宿主注入）。 */
   buildImport(request: ImportRequest): Promise<ImportOutcome | undefined>;
+  /** 设置快照的合并权重（用于 `--policy weighted`），权重高者胜。 */
+  setWeight(snapshotId: string, weight: number): boolean;
   /** 删除快照，实际删除返回 true。 */
   remove(snapshotId: string): boolean;
   /** 记忆库概览。 */

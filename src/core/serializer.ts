@@ -100,6 +100,7 @@ function renderFrontMatter(meta: SnapshotMeta): string {
     `token_estimate: ${meta.tokenEstimate}`,
     `encrypted: ${meta.encrypted}`,
     `checksum: ${meta.checksum}`,
+    `weight: ${meta.weight ?? 0}`,
     'layers: [verbatim, summary, preference]',
     '---',
   ];
@@ -401,6 +402,7 @@ export function parseSnapshot(markdown: string): ContextSnapshot {
     tokenEstimate: Number(head.token_estimate ?? 0),
     encrypted: head.encrypted === 'true',
     checksum: head.checksum ?? '',
+    weight: Number(head.weight ?? 0),
   };
 
   return {

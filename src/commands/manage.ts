@@ -1,4 +1,5 @@
 import { formatSnapshotList, formatTime } from './format';
+import { card, kvTable } from './card';
 import { asFlag, asPositiveInt, asString, guard, type CommandDeps } from './shared';
 
 /**
@@ -44,6 +45,7 @@ export function registerManageCommands(deps: CommandDeps): void {
         `· 生成时间：${formatTime(snapshot.meta.createdAt)}`,
         `· 三层规模：原文 ${snapshot.verbatim.length} 条 / 摘要 ${snapshot.summary.length} 节 / 偏好 ${snapshot.preferences.length} 条`,
         `· token 估算：${snapshot.meta.tokenEstimate}`,
+        `· 合并权重：${snapshot.meta.weight ?? 0}`,
         `· 存储：${record.encrypted ? '密文（AES-256-GCM）' : '明文'}`,
         `· 完整性：${intact ? '✅ 校验通过' : '⚠️ 校验和不匹配，文档可能被手工改动'}`,
       ].join('\n');
@@ -112,6 +114,59 @@ export function registerManageCommands(deps: CommandDeps): void {
       const restored = await deps.service.rollback(snapshotId, ref);
       if (!restored) return `回滚失败：引用 ${ref} 不存在或版本控制未启用。`;
       return `↩️ 已回滚快照 ${snapshotId} 至版本 ${ref}（重新落库成功）。`;
+    }),
+  });
+
+  deps.registry({
+    name: 'snapshot-weight',
+    description: '设置或查看快照的合并权重（用于 /import --mode merge --policy weighted）',
+    input: {
+      hint: '<快照id> [<权重整数>]  （不带权重查看当前值；--clear 清零）',
+    },
+    handler: guard(deps.logger, '/snapshot-weight', async (ctx) => {
+      const snapshotId = asString(ctx.args[0]);
+      if (!snapshotId) return '请提供快照 id，例如：/snapshot-weight snap_a1b2c3 5';
+
+      const read = deps.service.read(snapshotId);
+      if (!read) return `未找到快照 ${snapshotId}。`;
+
+      const clear = asFlag(ctx.options.clear);
+      const rawWeight = asString(ctx.args[1]);
+
+      // 不带权重且不清除：查看当前权重。
+      if (!clear && rawWeight === undefined) {
+        const current = read.snapshot.meta.weight ?? 0;
+        return card({
+          icon: '⚖️',
+          title: `快照 ${snapshotId} 当前权重`,
+          body: kvTable([
+            ['权重', String(current)],
+            ['说明', current > 0 ? '合并时优先级高于未加权快照' : '合并时按默认规则裁决'],
+          ]),
+        });
+      }
+
+      let weight: number;
+      if (clear) {
+        weight = 0;
+      } else {
+        const parsed = Number(rawWeight);
+        if (!Number.isFinite(parsed)) {
+          return `权重必须是数字，例如：/snapshot-weight ${snapshotId} 5`;
+        }
+        weight = parsed;
+      }
+
+      const ok = deps.service.setWeight(snapshotId, weight);
+      if (!ok) return `未找到快照 ${snapshotId}。`;
+      return card({
+        icon: '✅',
+        title: `已更新快照 ${snapshotId} 权重`,
+        body: kvTable([
+          ['权重', String(weight)],
+          ['生效场景', '/import --mode merge --policy weighted 冲突时高者胜'],
+        ]),
+      });
     }),
   });
 }

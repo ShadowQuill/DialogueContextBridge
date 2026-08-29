@@ -26,7 +26,7 @@ export type ImportMode = 'inject' | 'merge';
  * - `timestamp`：按 `createdAt` 先后裁决（较新者胜）；时间戳相同再比 `explicit`
  *   权重（用户明示胜系统推断）；仍相同则当前对话胜（本就是更近的交互）。
  */
-export type MergePolicy = 'newWins' | 'snapshotWins' | 'timestamp';
+export type MergePolicy = 'newWins' | 'snapshotWins' | 'timestamp' | 'weighted';
 
 /** 导入简报的渲染结果。 */
 export interface InjectBrief {
@@ -175,7 +175,14 @@ export interface MergeConflict {
   /** 裁决后的取值（即最终保留的一方）。 */
   resolvedValue: string;
   /** 裁决依据。 */
-  reason: 'snapshotWins' | 'newWins' | 'timestamp-newer' | 'timestamp-tie-explicit' | 'timestamp-tie';
+  reason:
+    | 'snapshotWins'
+    | 'newWins'
+    | 'timestamp-newer'
+    | 'timestamp-tie-explicit'
+    | 'timestamp-tie'
+    | 'weighted'
+    | 'weighted-tie';
 }
 
 /** 融合结果。 */
@@ -192,18 +199,28 @@ export interface FusionResult {
  * @param base - 历史快照偏好。
  * @param overlay - 当前对话偏好。
  * @param policy - 裁决规则。
+ * @param baseWeight - 历史快照的用户标记权重（来自 `base.meta.weight`，缺省 0）。
+ * @param overlayWeight - 当前对话快照的用户标记权重（来自 `overlay.meta.weight`，缺省 0）。
  * @returns 获胜方及其依据。
  */
 function resolvePreference(
   base: PreferenceEntry,
   overlay: PreferenceEntry,
   policy: MergePolicy,
+  baseWeight = 0,
+  overlayWeight = 0,
 ): { entry: PreferenceEntry; reason: MergeConflict['reason'] } {
   switch (policy) {
     case 'snapshotWins':
       return { entry: base, reason: 'snapshotWins' };
     case 'newWins':
       return { entry: overlay, reason: 'newWins' };
+    case 'weighted': {
+      // 用户主动标记的权重优先：高者胜；平局回退到「当前对话胜」（与 newWins 一致）。
+      if (baseWeight > overlayWeight) return { entry: base, reason: 'weighted' };
+      if (overlayWeight > baseWeight) return { entry: overlay, reason: 'weighted' };
+      return { entry: overlay, reason: 'weighted-tie' };
+    }
     case 'timestamp': {
       if (overlay.createdAt > base.createdAt) return { entry: overlay, reason: 'timestamp-newer' };
       if (base.createdAt > overlay.createdAt) return { entry: base, reason: 'timestamp-newer' };
@@ -229,15 +246,22 @@ function resolvePreference(
  * 原文与摘要属于「可叠加」内容，不参与冲突裁决——它们只是把更多背景并入
  * 新对话，真正的取舍留给人（新对话）判断。
  *
+ * `weighted` 策略下，冲突按 `base.meta.weight` / `overlay.meta.weight`（用户经
+ * `/snapshot-weight` 标记的合并优先级）裁决：高者胜；平局回退到当前对话胜。
+ *
  * @param base - 历史快照（被引入的一方）。
  * @param overlay - 当前对话快照（新信息一方）。
  * @param policy - 冲突裁决规则，缺省 `newWins`。
+ * @param baseWeight - 历史快照权重，缺省取 `base.meta.weight`（未标记则为 0）。
+ * @param overlayWeight - 当前对话快照权重，缺省取 `overlay.meta.weight`（未标记则为 0）。
  * @returns 融合结果与冲突清单。
  */
 export function fuseSnapshots(
   base: ContextSnapshot,
   overlay: ContextSnapshot,
   policy: MergePolicy = 'newWins',
+  baseWeight: number = base.meta.weight ?? 0,
+  overlayWeight: number = overlay.meta.weight ?? 0,
 ): FusionResult {
   const conflicts: MergeConflict[] = [];
   const prefs = new Map<string, PreferenceEntry>();
@@ -248,9 +272,9 @@ export function fuseSnapshots(
       prefs.set(pref.key, pref);
     } else if (pref.value === prev.value) {
       // 同值无需裁决，保留按策略应保留的一方（用于对齐时间戳/权重）。
-      prefs.set(pref.key, resolvePreference(prev, pref, policy).entry);
+      prefs.set(pref.key, resolvePreference(prev, pref, policy, baseWeight, overlayWeight).entry);
     } else {
-      const { entry, reason } = resolvePreference(prev, pref, policy);
+      const { entry, reason } = resolvePreference(prev, pref, policy, baseWeight, overlayWeight);
       conflicts.push({
         layer: 'preference',
         key: pref.key,

@@ -99,7 +99,7 @@ function resolveMode(raw: string | undefined): ImportMode {
  * @returns 合法的裁决规则，缺省或非预期值回退到 `newWins`。
  */
 function resolvePolicy(raw: string | undefined): MergePolicy {
-  if (raw === 'snapshotWins' || raw === 'timestamp') return raw;
+  if (raw === 'snapshotWins' || raw === 'timestamp' || raw === 'weighted') return raw;
   return 'newWins';
 }
 
@@ -127,6 +127,7 @@ function buildModePicker(id: string): string {
     '   --policy newWins    当前对话胜（新信息覆盖旧信息）',
     '   --policy snapshotWins 历史快照胜',
     '   --policy timestamp  按时间先后 / 显式权重裁决',
+    '   --policy weighted   按 /snapshot-weight 标记的用户权重裁决（高者胜）',
     '',
     '💡 先用 --dry-run 预览融合结果，确认后再去掉该标志执行：',
     `   /import ${id} --mode merge --dry-run`,
@@ -178,7 +179,7 @@ export function registerImportCommand(deps: CommandDeps): void {
     name: 'import',
     description: '引入历史快照：不带 --mode 时列出可选模式；--mode inject 仅注入只读背景，--mode merge 融合当前对话',
     input: {
-      hint: '<快照id> --mode inject|merge [--policy newWins|snapshotWins|timestamp] [--dry-run]',
+      hint: '<快照id> --mode inject|merge [--policy newWins|snapshotWins|timestamp|weighted] [--dry-run]',
     },
     handler: guard(deps.logger, '/import', async (ctx) => {
       const targetId = asString(ctx.args[0]);
@@ -207,7 +208,7 @@ export function registerImportCommand(deps: CommandDeps): void {
     name: 'dcb-merge',
     description: '一步到位融合快照：/dcb-merge <id> 等价于 /import <id> --mode merge，可选 --policy 与 --dry-run',
     input: {
-      hint: '<快照id> [--policy newWins|snapshotWins|timestamp] [--dry-run]',
+      hint: '<快照id> [--policy newWins|snapshotWins|timestamp|weighted] [--dry-run]',
     },
     handler: guard(deps.logger, '/dcb-merge', async (ctx) => {
       const targetId = asString(ctx.args[0]);

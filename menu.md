@@ -39,12 +39,12 @@
 
 | 文件 | 作用 |
 | --- | --- |
-| `index.ts` | 统一注册全部 **14 个命令**（`/compile`、`/save`、`/dcb-save`、`/snapshot.search`、`/snapshot.list`、`/snapshot.show`、`/snapshot.remove`、`/snapshot.history`、`/snapshot.rollback`、`/import`、`/dcb-merge`、`/dcb`、`/dcb-export`、`/dcb-import`）。**每个命令都声明 `input` 输入提示**，因此手打带参命令也会被宿主直接拦截执行、不再误发模型（根治历史 `/import ... --mode merge` 烧 token 问题），菜单点选与手打行为一致 |
+| `index.ts` | 统一注册全部 **15 个命令**（`/compile`、`/save`、`/dcb-save`、`/snapshot-search`、`/snapshot.list`、`/snapshot.show`、`/snapshot.remove`、`/snapshot.history`、`/snapshot.rollback`、`/snapshot-weight`、`/import`、`/dcb-merge`、`/dcb`、`/dcb-export`、`/dcb-import`）。**每个命令都声明 `input` 输入提示**，因此手打带参命令也会被宿主直接拦截执行、不再误发模型（根治历史 `/import ... --mode merge` 烧 token 问题），菜单点选与手打行为一致 |
 | `compile.ts` | `/compile`：把当前对话按三层结构编译为快照草稿（内存中，预览但不落库） |
 | `save.ts` | `/save`：把草稿写入 SQLite，或在没有草稿时即时编译并保存 |
-| `search.ts` | `/snapshot.search`：基于 FTS5 的关键词全文检索 |
-| `manage.ts` | `/snapshot.list`、`/snapshot.show`、`/snapshot.remove`、`/snapshot.history`、`/snapshot.rollback` |
-| `import.ts` | `/import`、`/dcb-merge` 与 `/dcb`：把历史快照注入当前对话。其中 `/dcb-merge <id>` 是 `/import <id> --mode merge` 的**高频单步别名**（少一次交互），支持 `--policy newWins\|snapshotWins\|timestamp` 与 `--dry-run`；`/dcb` 不带 id 时显示记忆库总览与快捷操作。全部支持 `inject`/`merge` 双模式与冲突裁决 |
+| `search.ts` | `/snapshot-search`：基于 FTS5 的关键词全文检索 |
+| `manage.ts` | `/snapshot.list`、`/snapshot.show`、`/snapshot.remove`、`/snapshot.history`、`/snapshot.rollback`、`/snapshot-weight`（查看 / 设置 / 清零快照合并权重，供 `--policy weighted` 使用） |
+| `import.ts` | `/import`、`/dcb-merge` 与 `/dcb`：把历史快照注入当前对话。其中 `/dcb-merge <id>` 是 `/import <id> --mode merge` 的**高频单步别名**（少一次交互），支持 `--policy newWins\|snapshotWins\|timestamp\|weighted` 与 `--dry-run`；`/dcb` 不带 id 时显示记忆库总览与快捷操作。全部支持 `inject`/`merge` 双模式与冲突裁决 |
 | `format.ts` | 面向用户的输出文案集中编排；DSH 命令回执按**纯文本**渲染（不解析 Markdown），故所有文案不使用任何 Markdown 标记，避免暴露 `**`、反引号、表格等源码符号 |
 | `card.ts` | 纯文本卡片渲染助手：emoji 标题 + `─` 分隔线 + `·` 项目符号 + `→` 引导的精致卡片（`card`/`kvTable`/`snapshotTable`/`actionList`），支撑全部命令回执统一为纯文本卡片 |
 | `shared.ts` | 命令参数解析、错误包装、宿主依赖对象 `CommandDeps` |
@@ -150,7 +150,7 @@
           → /save
             → src/storage/repository.ts + SQLite/FTS5
               → src/versioning/store.ts (可选 git 版本)
-                → /snapshot.search 或 /import
+                → /snapshot-search 或 /import
                   → src/core/inject.ts 生成简报
                     → InjectionService 注入新对话（或 session.send 降级）
 ```

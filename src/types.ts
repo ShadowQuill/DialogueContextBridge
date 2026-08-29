@@ -122,6 +122,13 @@ export interface SnapshotMeta {
   encrypted: boolean;
   /** 正文校验和（`sha256:<hex>`），用于完整性校验。 */
   checksum: string;
+  /**
+   * 合并优先级（用户主动标记的权重），默认 0。
+   *
+   * 在 `/import --mode merge --policy weighted` 下，冲突时 `weight` 高的一方胜；
+   * 平局回退到「当前对话胜」。该字段在 `/snapshot-weight` 命令中设置，随快照落盘。
+   */
+  weight?: number;
 }
 
 /** 完整的三层对话上下文快照。 */

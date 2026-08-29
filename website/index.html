@@ -175,6 +175,10 @@
 #    一步融合的别名（省一次交互）：/dcb-merge <id>
 /dcb-merge snap_a1b2c3 --policy newWins
 
+#    给某条快照打权重，融合时按权重裁决（高者胜）
+/snapshot-weight snap_a1b2c3 5
+/dcb-merge snap_a1b2c3 --policy weighted
+
 #    只看简报、不注入，先确认内容对不对
 /import snap_a1b2c3 --dry-run</pre>
       <p class="lead">所有命令都可在输入框按 <code>/</code>（或点 <code>+</code> 菜单按钮）唤起命令面板，鼠标点选即执行，走宿主、不经模型、零 token。命令回执统一为<strong>纯文本卡片</strong>（emoji + <code>·</code>/<code>→</code>/<code>─</code>，DSH 不解析 Markdown，故不出现 <code>**</code>、反引号等符号）。每个命令都声明了输入提示，即使在输入框手打带参命令回车，也会由宿主直接拦截执行、不再误发模型。</p>
@@ -183,7 +187,7 @@
 
   <section>
     <div class="wrap">
-      <h2>命令参考（共 14 个）</h2>
+      <h2>命令参考（共 15 个）</h2>
       <table>
         <thead><tr><th>命令</th><th>说明</th><th>常用选项</th></tr></thead>
         <tbody>
@@ -196,8 +200,9 @@
           <tr><td><code>/snapshot-remove</code></td><td>删除快照及其索引（不可撤销）</td><td>—</td></tr>
           <tr><td><code>/snapshot-history</code></td><td>查看快照版本历史（Phase 4 版本控制）</td><td>—</td></tr>
           <tr><td><code>/snapshot-rollback</code></td><td>回滚快照到历史版本并重新落库</td><td><code>--to &lt;ref&gt;</code></td></tr>
+          <tr><td><code>/snapshot-weight</code></td><td>查看 / 设置 / 清零快照的合并权重（用于 <code>--policy weighted</code>）</td><td><code>&lt;n&gt;</code> <code>--clear</code></td></tr>
           <tr><td><code>/import</code></td><td>引入历史快照：默认「仅新信息」，亦可「合并」</td><td><code>--mode inject|merge</code> <code>--policy</code> <code>-d</code></td></tr>
-          <tr><td><code>/dcb-merge</code></td><td>一步融合快照（等价 <code>/import &lt;id&gt; --mode merge</code>）</td><td><code>--policy newWins|snapshotWins|timestamp</code> <code>-d</code></td></tr>
+          <tr><td><code>/dcb-merge</code></td><td>一步融合快照（等价 <code>/import &lt;id&gt; --mode merge</code>）</td><td><code>--policy newWins|snapshotWins|timestamp|weighted</code> <code>-d</code></td></tr>
           <tr><td><code>/dcb</code></td><td>一键台：带 id 等价 inject 一键引入；不带 id 显示记忆库总览</td><td>—</td></tr>
           <tr><td><code>/dcb-export</code></td><td>把快照导出为独立 <code>.md</code> 文件（跨设备/跨账号可移植）</td><td><code>--all</code> <code>-o &lt;dir&gt;</code></td></tr>
           <tr><td><code>/dcb-import</code></td><td>从 <code>.md</code> 文件导入快照到记忆库（自动分配新 id 防覆盖）</td><td><code>--dry-run</code></td></tr>

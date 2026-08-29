@@ -156,8 +156,9 @@ dsh --profile web          # 启动并自动打开默认浏览器到 Web UI
 | `/snapshot-remove <id>` | 删除快照及其索引（不可撤销） | — |
 | `/snapshot-history <id>` | 查看快照版本历史（Phase 4 版本控制） | — |
 | `/snapshot-rollback <id>` | 回滚快照到历史版本并重新落库 | `--to <ref>` |
-| `/import <id>` | 把历史快照引入当前对话：默认「仅新信息」，亦可「合并」 | `--mode inject\|merge` `--policy snapshotWins\|newWins\|timestamp` `-d, --dry-run` |
-| `/dcb-merge <id>` | 一步融合快照的高频别名，等价 `/import <id> --mode merge`（少一次交互） | `--policy snapshotWins\|newWins\|timestamp` `-d, --dry-run` |
+| `/snapshot-weight <id> [<n>]` | 查看 / 设置 / 清零快照的合并权重（用于 `--policy weighted`） | `--clear` |
+| `/import <id>` | 把历史快照引入当前对话：默认「仅新信息」，亦可「合并」 | `--mode inject\|merge` `--policy newWins\|snapshotWins\|timestamp\|weighted` `-d, --dry-run` |
+| `/dcb-merge <id>` | 一步融合快照的高频别名，等价 `/import <id> --mode merge`（少一次交互） | `--policy newWins\|snapshotWins\|timestamp\|weighted` `-d, --dry-run` |
 | `/dcb <id>` | 一键台：带 `<id>` 等价 inject 一键引入；不带 `<id>` 显示近期快照与快捷操作 | — |
 | `/dcb-save` | 一键导出当前对话为快照：编译并落库，回显可复制的 id 与引入命令（Phase 4 一键操作）。**默认省略整段快照全文**以压低对话历史体积 | `--title` `--tags` `--max-tokens` `--full`(回显完整 Markdown 全文) |
 | `/dcb-export <id>` | 把快照导出为独立 `.md` 文件（明文、自描述 Schema 头，可被任意 Agent 接手） | `--all` `-o, --out <dir>` |
@@ -181,7 +182,7 @@ dsh --profile web          # 启动并自动打开默认浏览器到 Web UI
 | `encryption.passphrase` | `''` | 加密口令（≥ 8 位，不落盘） |
 | `encryption.indexPlaintext` | `false` | 加密时是否仍建明文索引（**默认关闭**，开启会通过索引泄漏内容） |
 | `logLevel` | `info` | 日志级别 |
-| `merge.policy` | `newWins` | 合并模式（`/import --mode merge`）的冲突裁决规则：`newWins` 当前对话覆盖历史快照、`snapshotWins` 历史快照优先、`timestamp` 按时间戳先后 |
+| `merge.policy` | `newWins` | 合并模式（`/import --mode merge`）的冲突裁决规则：`newWins` 当前对话覆盖历史快照、`snapshotWins` 历史快照优先、`timestamp` 按时间戳先后、`weighted` 按 `/snapshot-weight` 标记的用户权重（高者胜，平局当前对话胜） |
 | `summary.mode` | `extractive` | 摘要层压缩方式：`extractive` 内置抽取式（离线、零依赖、确定性可复现）；`llm` 调用宿主 LLM 生成更连贯、更擅长跨片段归纳的压缩摘要（需宿主已在该 provider 下配置可用模型） |
 | `summary.provider` | `deepseek` | `llm` 模式使用的 provider 路由（需宿主已配置对应 API Key） |
 | `summary.model` | `''` | `llm` 模式使用的模型 id；留空时由宿主从该 provider 自动选第一个可用模型 |
@@ -270,7 +271,7 @@ docs(readme): 补充加密擦除说明
 
 - [x] **Phase 1** 快照导出：三层编译、Markdown + Schema 落盘、FTS5 检索
 - [x] **Phase 2** 快照导入：「仅了解新引入信息」模式（快照作为只读背景情报注入，`/import` + `InjectionService` 宿主接缝）
-- [x] **Phase 3** 合并模式：当前上下文与引入快照智能融合，偏好层按可配置规则裁决（`newWins` / `snapshotWins` / `timestamp`），冲突清单写入「裁决报告」供复核（`/import --mode merge [--policy ...]`，`merge.policy` 配置项）
+- [x] **Phase 3** 合并模式：当前上下文与引入快照智能融合，偏好层按可配置规则裁决（`newWins` / `snapshotWins` / `timestamp` / `weighted`），冲突清单写入「裁决报告」供复核（`/import --mode merge [--policy ...]`，`merge.policy` 配置项）。`weighted` 规则下冲突按 `/snapshot-weight` 标记的用户权重裁决（高者胜，平局当前对话胜）
 - [x] **Phase 4** UI 优化 / 一键操作 / 设置面板集成：经 `ctx.settings`（`installSettingsSection`）把 `Config` Schema 接入 DSH 设置面板，自动渲染配置表单并**热改无需重启**（日志级别、token 预算、合并策略、加密口令、版本控制开关均 live 生效；`dataDir` 变更需重启）；新增 `/dcb` 一键台（不带 id 显示近期快照与快捷操作）与 `/dcb-save` 一步导出可复制快照；记忆库版本控制此前已完成（`/snapshot-history` + `/snapshot-rollback` 回滚）
 - [x] **Phase 4.1** 卡片 UI 统一：新增 `src/commands/card.ts` 渲染助手（引用块标题带 + GFM 表格 + 状态徽标 + 快捷操作清单），`/dcb`、`/import`、`/save`、`/dcb-save` 回执统一为清爽卡片；设置表单字段描述收紧。注：DSH 0.1.x 的设置面板卡片由 harness 预编译进 web 包，外部插件无法注入自定义卡片，故卡片统一落在对话内呈现
 - [x] **Phase 4.2** 快照文件导入 / 导出：新增 `/dcb-export <id>`（`--all` 全量、`-o <dir>` 指定目录）把快照写成独立明文 `.md` 文件，以及 `/dcb-import <path>`（`--dry-run` 预演）从文件导入记忆库；复用 `serializer.ts` 的 `serializeSnapshot` / `parseSnapshot` / `verifySnapshotDocument` 保证往返零损失，导入自动分配新 id 防覆盖、按本地加密策略重加密落盘。顺带修 `parseFlags` 把 `--dry-run` 转驼峰 `dryRun`（修复 `/import --dry-run` 此前静默失效）

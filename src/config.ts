@@ -88,11 +88,12 @@ export const Config = Schema.object({
     .description('插件日志级别。'),
 
   merge: Schema.object({
-    policy: Schema.union(['newWins', 'snapshotWins', 'timestamp'] as const)
+    policy: Schema.union(['newWins', 'snapshotWins', 'timestamp', 'weighted'] as const)
       .default('newWins')
       .description(
         '合并模式（/import --mode merge）冲突裁决：newWins=新信息覆盖旧；' +
-          'snapshotWins=快照优先；timestamp=按时间/权重裁决。',
+          'snapshotWins=快照优先；timestamp=按时间/显式权重裁决；' +
+          'weighted=按用户经 /snapshot-weight 标记的权重裁决（高者胜，平局当前对话胜）。',
       ),
   })
     .default({ policy: 'newWins' })
