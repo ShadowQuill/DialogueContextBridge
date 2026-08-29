@@ -64,3 +64,13 @@ export function actionList(items: ReadonlyArray<readonly [string, string]>): str
 export function flag(on: boolean, onText = '开', offText = '关'): string {
   return on ? `🟢 ${onText}` : `⚪ ${offText}`;
 }
+
+/**
+ * 已知限制提示（DSH 0.1.x rc.2 框架层，插件侧无法根治，转为气泡内主动引导）。
+ *
+ * 手打带参命令经宿主 `matchEnter` 拦截路径执行后，rc.2 框架未把气泡标记为 done，
+ * 会一直显示「执行中…」——但结果已正确返回并注入，发一条新消息即清除。把这条
+ * 说明挂到高频结果卡片尾部，把「困惑」变成「被引导」，并顺带推荐命令面板路径。
+ */
+export const KNOWN_LIMIT_TIP =
+  '若气泡显示「执行中…」：属 DSH 0.1.x 已知限制，发一条新消息即清除，结果已正确返回。推荐按 / 唤起命令面板点选，体验更顺。';

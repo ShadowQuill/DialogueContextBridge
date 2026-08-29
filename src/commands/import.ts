@@ -2,7 +2,7 @@ import type { ImportMode, MergePolicy } from '../core/inject';
 import type { AgentHandle } from '../dsh/types';
 import { asString, asFlag, guard, loadMessages, type CommandDeps } from './shared';
 import type { ConversationMessage } from '../types';
-import { actionList, card, kvTable, snapshotTable } from './card';
+import { actionList, card, kvTable, snapshotTable, KNOWN_LIMIT_TIP } from './card';
 
 /** `/import` 与 `/dcb-merge` 共用的导入执行参数。 */
 interface RunImportParams {
@@ -78,6 +78,7 @@ async function runImport(params: RunImportParams): Promise<string> {
       ['Token 估算', String(outcome.tokenEstimate)],
       ['冲突裁决', outcome.mode === 'merge' ? `${outcome.conflictCount} 处` : '—'],
     ]),
+    footerNote: KNOWN_LIMIT_TIP,
   });
 }
 
@@ -242,17 +243,18 @@ export function registerImportCommand(deps: CommandDeps): void {
         const snapshots = deps.service.list(8);
         const { total } = deps.service.stats();
         if (snapshots.length === 0) {
-          return card({
-            icon: '📭',
-            title: '记忆库暂无快照',
-            body: [
-            '先用 /compile 编译当前对话，再 /save 落库；或 /dcb-save 一键导出。',
-            '',
-            LAUNCH_HINT,
-            '',
-            buildFunctionIndex(),
-            ].join('\n'),
-          });
+        return card({
+          icon: '📭',
+          title: '记忆库暂无快照',
+          body: [
+          '先用 /compile 编译当前对话，再 /save 落库；或 /dcb-save 一键导出。',
+          '',
+          LAUNCH_HINT,
+          '',
+          buildFunctionIndex(),
+          ].join('\n'),
+          footerNote: KNOWN_LIMIT_TIP,
+        });
         }
         const rows = snapshots.map((s) => ({
           id: s.snapshotId,
@@ -270,6 +272,7 @@ export function registerImportCommand(deps: CommandDeps): void {
             '',
             buildFunctionIndex(),
           ].join('\n'),
+          footerNote: KNOWN_LIMIT_TIP,
         });
       }
 
@@ -287,6 +290,7 @@ export function registerImportCommand(deps: CommandDeps): void {
           ['Token 估算', String(outcome.tokenEstimate)],
           ['快照 ID', `${outcome.snapshotId}`],
         ]),
+        footerNote: KNOWN_LIMIT_TIP,
       });
     }),
   });
