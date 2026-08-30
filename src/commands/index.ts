@@ -24,8 +24,10 @@ export type { CommandDeps } from './shared';
  * | `/snapshot-show` | 查看快照完整文档 |
  * | `/snapshot-remove` | 删除快照 |
  * | `/snapshot-weight` | 查看 / 设置 / 清零快照合并权重（供 `--policy weighted`） |
- * | `/import` | 把历史快照作为背景情报引入当前对话（Phase 2） |
+ * | `/import` | 把历史快照作为背景情报引入当前对话（Phase 2）；不带 id 显示最近 N 条选择器 |
  * | `/dcb-merge` | 一步融合快照（等价 `/import <id> --mode merge`，高频单步别名） |
+ * | `/dcb-import-last` | 一键引入最近一条快照（inject，无参免手打、零气泡） |
+ * | `/dcb-merge-last` | 一键融合最近一条快照（merge，无参免手打、零气泡） |
  * | `/dcb` | 一键台：带 id 一键引入；不带 id 显示近期快照与快捷操作（Phase 4） |
  *
  * @param deps - 命令依赖。

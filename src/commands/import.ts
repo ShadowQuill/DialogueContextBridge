@@ -1,8 +1,15 @@
 import type { ImportMode, MergePolicy } from '../core/inject';
 import type { AgentHandle } from '../dsh/types';
+import type { BridgeService } from '../service';
 import { asString, asFlag, guard, loadMessages, type CommandDeps } from './shared';
 import type { ConversationMessage } from '../types';
 import { actionList, card, kvTable, snapshotTable, KNOWN_LIMIT_TIP } from './card';
+
+/** `/import` 不带 id 时，选择器卡片默认展示的最近快照条数。 */
+const RECENT_PICKER_LIMIT = 10;
+
+/** `/dcb` 主页通用的「如何唤起功能卡片」提示（极简，省 token）。 */
+const LAUNCH_HINT = '🧭 选功能：输入框按 `/` 或点菜单按钮唤起命令面板，鼠标点选即执行（不经模型，零 token）。';
 
 /** `/import` 与 `/dcb-merge` 共用的导入执行参数。 */
 interface RunImportParams {
@@ -136,6 +143,58 @@ function buildModePicker(id: string): string {
 }
 
 /**
+ * 渲染「最近 N 条快照」选择器（DSH 0.1.x 无参数补全 / 下拉 API，故以卡片列出
+ * 可复制命令来「绕开手打 id 的气泡摩擦」）。
+ *
+ * 关键约束：DSH 0.1.x 的 `CommandDefinition` 仅支持 `name/description/input/
+ * handler`，**没有参数补全或下拉选择器**；且手打带参命令会触发 rc.2 框架的
+ * 「执行中…」常驻气泡。因此本卡片用「列出最近快照 + 可复制命令」替代真正的
+ * 气泡内点选；同时给出两个**完全无参**命令 `/dcb-import-last` / `/dcb-merge-last`，
+ * 由命令面板点选即执行、零手打、零气泡（README「已知限制」明确无参命令无此现象）。
+ *
+ * @param service - 桥接服务，用于列出最近快照。
+ * @returns Markdown 选择器卡片。
+ */
+function buildRecentPicker(service: BridgeService): string {
+  const snapshots = service.list(RECENT_PICKER_LIMIT);
+  if (snapshots.length === 0) {
+    return card({
+      icon: '📭',
+      title: '记忆库暂无快照',
+      body: [
+        '先用 /compile 编译当前对话，再 /save 落库；或 /dcb-save 一键导出。',
+        '',
+        LAUNCH_HINT,
+      ].join('\n'),
+      footerNote: KNOWN_LIMIT_TIP,
+    });
+  }
+  const rows = snapshots.map((s) => ({
+    id: s.snapshotId,
+    title: s.title,
+    tokens: s.tokenEstimate,
+    status: s.encrypted ? '🔒 加密' : '明文',
+  }));
+  return card({
+    icon: '🗂️',
+    title: `选择要引入的快照（最近 ${snapshots.length} 条）`,
+    subtitle: '复制下方任一 ID 运行，或直接用无参命令免手打',
+    body: [
+      snapshotTable(rows),
+      '',
+      '引入方式（把 <id> 换成上表 ID）：',
+      '  /import <id> --mode inject           仅新信息（只读背景）',
+      '  /import <id> --mode merge --dry-run  先预览融合，确认再去掉 --dry-run',
+      '',
+      '⚡ 免手打、零气泡（命令面板点选即执行）：',
+      '  /dcb-import-last   一键引入最近一条（inject）',
+      '  /dcb-merge-last    一键融合最近一条（merge）',
+    ].join('\n'),
+    footerNote: KNOWN_LIMIT_TIP,
+  });
+}
+
+/**
  * 功能速查索引：在 `/` 命令面板里以卡片形式点选即可触发，不经模型、零 token。
  *
  * 作为 `/dcb` 导航主页的固定区块，让用户一眼看到全部能力并知道如何唤起。
@@ -150,15 +209,14 @@ function buildFunctionIndex(): string {
     ['引入快照（仅新信息）', '/dcb <id>'],
     ['一步融合快照（省一步）', '/dcb-merge <id>'],
     ['合并引入快照（显式）', '/import <id> --mode merge'],
+    ['一键引入最近一条（免手打）', '/dcb-import-last'],
+    ['一键融合最近一条（免手打）', '/dcb-merge-last'],
     ['检索记忆', '/snapshot-search <词>'],
     ['查看 / 列出快照', '/snapshot.list'],
     ['导出快照为文件', '/dcb-export <id>'],
     ['从文件导入快照', '/dcb-import <path>'],
   ]);
 }
-
-/** `/dcb` 主页通用的「如何唤起功能卡片」提示（极简，省 token）。 */
-const LAUNCH_HINT = '🧭 选功能：输入框按 `/` 或点菜单按钮唤起命令面板，鼠标点选即执行（不经模型，零 token）。';
 
 /**
  * 注册 `/import` 命令：把历史快照引入当前对话（Phase 2 导入注入 / Phase 3 合并）。
@@ -184,7 +242,7 @@ export function registerImportCommand(deps: CommandDeps): void {
     },
     handler: guard(deps.logger, '/import', async (ctx) => {
       const targetId = asString(ctx.args[0]);
-      if (!targetId) return '请提供要引入的快照 id，例如：/import snap_a1b2c3';
+      if (!targetId) return buildRecentPicker(deps.service);
 
       // 未显式指定模式：返回模式选择引导，不自动注入（spec 的「弹出选择界面」等价物）。
       if (ctx.options.mode === undefined) {
@@ -291,6 +349,55 @@ export function registerImportCommand(deps: CommandDeps): void {
           ['快照 ID', `${outcome.snapshotId}`],
         ]),
         footerNote: KNOWN_LIMIT_TIP,
+      });
+    }),
+  });
+
+  // 一键引入最近一条（inject），完全无参：命令面板点选即执行，免手打、零气泡。
+  deps.registry({
+    name: 'dcb-import-last',
+    description: '一键引入最近一条快照（inject 只读背景）；无参、命令面板点选即执行，免手打、零气泡',
+    handler: guard(deps.logger, '/dcb-import-last', async (ctx) => {
+      const snapshots = deps.service.list(1);
+      if (snapshots.length === 0) {
+        return '记忆库暂无快照。先用 /compile + /save 或 /dcb-save 落库。';
+      }
+      const targetId = snapshots[0].snapshotId;
+      const outcome = await deps.service.buildImport({ snapshotId: targetId, mode: 'inject' });
+      if (!outcome) return `未找到快照 ${targetId}。`;
+      deps.injector(ctx.agent, outcome.brief);
+      return card({
+        icon: '✅',
+        title: `已一键引入最近快照 ${outcome.snapshotId}`,
+        subtitle: '已作为只读背景情报注入，新对话的产出不会回写该快照',
+        body: kvTable([
+          ['模式', 'inject（仅新信息）'],
+          ['Token 估算', String(outcome.tokenEstimate)],
+          ['快照 ID', outcome.snapshotId],
+        ]),
+        footerNote: KNOWN_LIMIT_TIP,
+      });
+    }),
+  });
+
+  // 一键融合最近一条（merge），可选 --policy 与 --dry-run；无参点选即执行、零气泡。
+  deps.registry({
+    name: 'dcb-merge-last',
+    description: '一键融合最近一条快照（merge）；无参、命令面板点选即执行，免手打、零气泡。可选 --policy 与 --dry-run',
+    input: { hint: '[--policy newWins|snapshotWins|timestamp|weighted] [--dry-run]' },
+    handler: guard(deps.logger, '/dcb-merge-last', async (ctx) => {
+      const snapshots = deps.service.list(1);
+      if (snapshots.length === 0) {
+        return '记忆库暂无快照。先用 /compile + /save 或 /dcb-save 落库。';
+      }
+      return runImport({
+        deps,
+        agent: ctx.agent,
+        conversationId: ctx.conversationId,
+        targetId: snapshots[0].snapshotId,
+        mode: 'merge',
+        policy: resolvePolicy(asString(ctx.options.policy)),
+        dryRun: asFlag(ctx.options.dryRun),
       });
     }),
   });

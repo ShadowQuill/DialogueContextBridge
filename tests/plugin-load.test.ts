@@ -161,7 +161,7 @@ describe('plugin load integration', () => {
     ]) {
       expect(names).toContain(expected);
     }
-    expect(names.length).toBe(15);
+    expect(names.length).toBe(17);
   });
 
   it('端到端跑通 编译落库 → 检索 → 读取 → 导入(inject/merge) → 删除', async () => {
