@@ -180,14 +180,18 @@
 /dcb-merge snap_a1b2c3 --policy weighted
 
 #    只看简报、不注入，先确认内容对不对
-/import snap_a1b2c3 --dry-run</pre>
+/import snap_a1b2c3 --dry-run
+
+#    不想手打 id？新对话里一键引入 / 融合最近一条（无参命令，命令面板点选即执行、零气泡）
+/dcb-import-last
+/dcb-merge-last</pre>
       <p class="lead">所有命令都可在输入框按 <code>/</code>（或点 <code>+</code> 菜单按钮）唤起命令面板，鼠标点选即执行，走宿主、不经模型、零 token。命令回执统一为<strong>纯文本卡片</strong>（emoji + <code>·</code>/<code>→</code>/<code>─</code>，DSH 不解析 Markdown，故不出现 <code>**</code>、反引号等符号）。每个命令都声明了输入提示，即使在输入框手打带参命令回车，也会由宿主直接拦截执行、不再误发模型。</p>
     </div>
   </section>
 
   <section>
     <div class="wrap">
-      <h2>命令参考（共 15 个）</h2>
+      <h2>命令参考（共 17 个）</h2>
       <table>
         <thead><tr><th>命令</th><th>说明</th><th>常用选项</th></tr></thead>
         <tbody>
@@ -206,7 +210,9 @@
           <tr><td><code>/dcb</code></td><td>一键台：带 id 等价 inject 一键引入；不带 id 显示记忆库总览</td><td>—</td></tr>
           <tr><td><code>/dcb-export</code></td><td>把快照导出为独立 <code>.md</code> 文件（跨设备/跨账号可移植）</td><td><code>--all</code> <code>-o &lt;dir&gt;</code></td></tr>
           <tr><td><code>/dcb-import</code></td><td>从 <code>.md</code> 文件导入快照到记忆库（自动分配新 id 防覆盖）</td><td><code>--dry-run</code></td></tr>
-        </tbody>
+          <tr><td><code>/dcb-import-last</code></td><td>一键引入最近一条快照（inject 只读背景）；无参、面板点选即执行，免手打、零气泡</td><td>—</td></tr>
+          <tr><td><code>/dcb-merge-last</code></td><td>一键融合最近一条快照（merge）；无参、面板点选即执行，免手打、零气泡</td><td><code>--policy newWins|snapshotWins|timestamp|weighted</code> <code>-d</code></td></tr>
+      </tbody>
       </table>
     </div>
   </section>

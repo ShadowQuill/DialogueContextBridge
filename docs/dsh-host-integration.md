@@ -121,16 +121,17 @@ dsh --profile web
 
 | 上下文成员 | 类型 | 必需 | 作用 |
 | --- | --- | --- | --- |
-| `ctx.commands` | `CommandRuntime`（`register(def)`） | **必需** | 注册全部 **14 个命令**（见下）。缺失时 `createDshCommandRegistry` 抛 `DCB_HOST_CAPABILITY_MISSING`。 |
+| `ctx.commands` | `CommandRuntime`（`register(def)`） | **必需** | 注册全部 **17 个命令**（见下）。缺失时 `createDshCommandRegistry` 抛 `DCB_HOST_CAPABILITY_MISSING`。 |
 | `agent.session` | `Session`（`deriveMessages()`） | 可选 | 读取当前对话消息，供 `/compile` 与 `/import --mode merge` 使用。缺失时命令返回可读提示而非崩溃。 |
 | `agent.inject` | `(userMessage) => void` | 可选 | 把背景简报作为模型可见输入注入下一轮请求。缺失时降级为以消息形式下发（`createSessionInjector`）。 |
 
 > 接缝的完整类型定义见 `src/dsh/types.ts`。插件**不**对宿主做 duck-typing 猜测：
 > `createDshCommandRegistry` 在能力缺失时抛可读错误，而不是静默降级。
 >
-> 全部 14 个命令：`/compile`、`/save`、`/dcb-save`、`/snapshot-search`、`/snapshot-list`、
-> `/snapshot-show`、`/snapshot-remove`、`/snapshot-history`、`/snapshot-rollback`、`/import`、
-> `/dcb-merge`、`/dcb`、`/dcb-export`、`/dcb-import`。
+> 全部 17 个命令：`/compile`、`/save`、`/dcb-save`、`/snapshot-search`、`/snapshot-list`、
+> `/snapshot-show`、`/snapshot-remove`、`/snapshot-history`、`/snapshot-rollback`、`/snapshot-weight`、
+> `/import`、`/dcb-merge`、`/dcb`、`/dcb-export`、`/dcb-import`、
+> `/dcb-import-last`、`/dcb-merge-last`。
 
 ### 1.1 三者的语义契约
 
@@ -139,7 +140,7 @@ dsh --profile web
   与 `invocation.rawInput`，返回 `{ kind: 'success', text }` 或 `{ kind: 'error', text }`。
   - **`input` 字段是关键交互契约**：声明 `input: { hint, images? }` 后，宿主客户端
     （`dsh-client-ui-commands` 的 `matchEnter`）会在用户**手打带参命令并回车**时也走宿主拦截
-    执行，而非把整行当作普通消息发给 LLM。本插件对全部 14 个命令统一声明 `input`，从根上避免
+    执行，而非把整行当作普通消息发给 LLM。本插件对全部**带参**命令统一声明 `input`（无参命令 `/dcb-import-last`、`/dcb-merge-last` 不声明，由命令面板点选即执行），从根上避免
     历史上 `/import <id> --mode merge` 被模型当成聊天、烧 token 的问题。
 - **`agent.session.deriveMessages()`**：返回时间升序的消息数组，单条映射为
   `{ id, role, content, createdAt }`（`role` 取 `user` / `assistant`）。
@@ -177,7 +178,7 @@ DSH 加载插件的典型方式（具体以宿主的插件清单格式为准）�
 
 | 测试 | 验证内容 |
 | --- | --- |
-| `tests/plugin-load.test.ts` | `apply` 打开数据库、把服务挂到 `ctx.dcb`、注册全部 14 个命令、`dispose` 释放连接；并端到端跑通「编译落库 → 检索 → 读取 → 导入 → 删除」。 |
+| `tests/plugin-load.test.ts` | `apply` 打开数据库、把服务挂到 `ctx.dcb`、注册全部 17 个命令、`dispose` 释放连接；并端到端跑通「编译落库 → 检索 → 读取 → 导入 → 删除」。 |
 | `tests/dsh-host.test.ts` | 用**贴合 DSH 形态的 mock 宿主**驱动 `apply`，并实际触发 `/compile`、`/import` 回调：证明 `/compile` 走 `conversation` 服务、`/import` 在宿主提供 `injector` 时走真实 `InjectionService.inject`（而非消息降级）、缺失 `injector` 时降级为 `session.send`。 |
 
 运行：
@@ -197,8 +198,8 @@ npx vitest run tests/dsh-host.test.ts   # 或 npx vitest run 跑全部
 在真机上加载后，逐项核对：
 
 - [ ] **命令可见**：`/compile` `/save` `/dcb-save` `/import` `/dcb-merge` `/dcb` /
-      `/dcb-export` `/dcb-import` 以及 `snapshot-search` / `snapshot-list` / `snapshot-show` /
-      `snapshot-remove` / `snapshot-history` / `snapshot-rollback` 共 14 个命令均出现在宿主命令列表。
+      `/dcb-export` `/dcb-import` `/dcb-import-last` `/dcb-merge-last` 以及 `snapshot-search` / `snapshot-list` / `snapshot-show` /
+      `snapshot-remove` / `snapshot-history` / `snapshot-rollback` / `snapshot-weight` 共 17 个命令均出现在宿主命令列表。
 - [ ] **`/compile` 有内容**：在一段已有对话里执行 `/compile`，应回显三层预览，
       而不是「当前对话没有可编译的消息」（后者说明 `agent.session.deriveMessages()` 没接通）。
 - [ ] **`/import` 接入系统提示**：执行 `/dcb <id>`，确认背景简报出现在**新对话的系统

@@ -3,6 +3,16 @@
 All notable changes to the **DialogueContextBridge** DSH plugin are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-08-30
+
+### Features
+- **无参免手打命令 `/dcb-import-last` / `/dcb-merge-last`**：新对话里一键引入 / 融合**最近一条**快照，命令面板点选即执行、零手打、零气泡（DSH 0.1.x rc.2 下无参命令无「执行中…」常驻问题，规避手打带参命令的气泡摩擦）。
+- **`/import` 不带 id 时渲染「最近 N 条快照」选择器**：列出可复制的 `/import <id>` 命令（默认 10 条，常量 `RECENT_PICKER_LIMIT`），绕开手打 id 的摩擦。命令总数 15 → 17。
+
+### Docs
+- 同步 README / menu / website / docs 命令计数与命令清单到 17 个；修正 README 状态行单测数（100 → 104）与版本徽章（→ 0.3.0）。
+- 修正 README「已知限制」章节一处与无参命令行为自相矛盾的措辞。
+
 ## [0.2.0] - 2026-08-29
 
 ### Features

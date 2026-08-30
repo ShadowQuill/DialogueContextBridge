@@ -19,10 +19,10 @@
 [![Deploy Docs](https://github.com/ShadowQuill/DialogueContextBridge/actions/workflows/deploy-docs.yml/badge.svg)](https://github.com/ShadowQuill/DialogueContextBridge/actions/workflows/deploy-docs.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 [![Docs Site](https://img.shields.io/badge/Website-shadowsquill.github.io-blue?logo=githubpages)](https://shadowquill.github.io/DialogueContextBridge/)
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/ShadowQuill/DialogueContextBridge/releases/tag/v0.2.0)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/ShadowQuill/DialogueContextBridge/releases)
 [![DSH](https://img.shields.io/badge/DSH-0.1.1--rc.2-purple.svg)](https://github.com/ShadowQuill/dsh)
 
-> **状态**：✅ 已发布 `v0.2.0` · 真实 `dsh@0.1.1-rc.2` 宿主端到端验证通过 · CI 绿 · 100 单测 · 文档站自动部署
+> **状态**：✅ `v0.2.0` 已发布 · `0.3.0` 开发中 · 真实 `dsh@0.1.1-rc.2` 宿主端到端验证通过 · CI 绿 · 104 单测 · 文档站自动部署
 
 ## 这是什么
 
